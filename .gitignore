@@ -1,0 +1,11 @@
+*.jks
+*.keystore
+*.p12
+*.pem
+.env
+local.properties
+.gradle/
+**/build/
+.idea/
+*.iml
+credentials/

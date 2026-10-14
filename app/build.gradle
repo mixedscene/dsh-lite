@@ -1,0 +1,62 @@
+import groovy.json.JsonOutput
+
+plugins { id 'com.android.application' }
+
+def clientId = providers.environmentVariable('AGY_CLIENT_ID')
+def clientSecret = providers.environmentVariable('AGY_CLIENT_SECRET')
+def generatedOAuth = layout.buildDirectory.dir('generated/oauth/java')
+def generateOAuth = tasks.register('generateOAuthConfig') {
+    outputs.dir(generatedOAuth)
+    // Keep secret changes from reusing a stale generated client configuration.
+    outputs.upToDateWhen { false }
+    doLast {
+        def id = clientId.orNull
+        def secret = clientSecret.orNull
+        if (!id || !secret) throw new GradleException('Set AGY_CLIENT_ID and AGY_CLIENT_SECRET before building.')
+        def target = generatedOAuth.get().file('org/dsh/lite/OAuthConfig.java').asFile
+        target.parentFile.mkdirs()
+        target.text = 'package org.dsh.lite;\nfinal class OAuthConfig {\n' +
+            ' static final String CLIENT_ID = ' + JsonOutput.toJson(id) + ';\n' +
+            ' static final String CLIENT_SECRET = ' + JsonOutput.toJson(secret) + ';\n}\n'
+    }
+}
+
+android {
+    namespace 'org.dsh.lite'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'org.dsh.lite'
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName '0.1.0'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    sourceSets.main.java.srcDir(generatedOAuth)
+    signingConfigs {
+        cloud {
+            def keyPath = System.getenv('APK_KEYSTORE_PATH')
+            if (keyPath) {
+                storeFile file(keyPath)
+                storePassword System.getenv('APK_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('APK_KEY_ALIAS')
+                keyPassword System.getenv('APK_KEY_PASSWORD')
+            }
+        }
+    }
+    buildTypes {
+        debug {
+            if (System.getenv('APK_KEYSTORE_PATH')) signingConfig signingConfigs.cloud
+        }
+        release {
+            minifyEnabled true
+            shrinkResources true
+            signingConfig signingConfigs.cloud
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+tasks.named('preBuild').configure { dependsOn(generateOAuth) }
