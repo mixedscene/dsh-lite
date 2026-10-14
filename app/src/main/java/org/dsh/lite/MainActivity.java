@@ -59,9 +59,14 @@ public final class MainActivity extends Activity {
         buildUi();
         IntentFilter filter = new IntentFilter(AUTH_ACTION);
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(authReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
-        else registerReceiver(authReceiver, filter, "org.dsh.lite.permission.AUTH_RESULT", null);
+        else registerLegacyAuthReceiver(filter);
         receiverRegistered = true; refreshAccounts();
         MAIN.post(() -> { if (!destroyed) discoverModels(); });
+    }
+    // Android 8-12 has no not-exported receiver flag; the signature permission limits senders to this app.
+    @android.annotation.SuppressLint("UnspecifiedRegisterReceiverFlag")
+    private void registerLegacyAuthReceiver(IntentFilter filter) {
+        registerReceiver(authReceiver, filter, "org.dsh.lite.permission.AUTH_RESULT", null);
     }
     private void buildUi() {
         boolean dark = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
