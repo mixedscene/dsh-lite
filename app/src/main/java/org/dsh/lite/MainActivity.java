@@ -59,7 +59,7 @@ public final class MainActivity extends Activity {
         buildUi();
         IntentFilter filter = new IntentFilter(AUTH_ACTION);
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(authReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
-        else registerReceiver(authReceiver, filter);
+        else registerReceiver(authReceiver, filter, "org.dsh.lite.permission.AUTH_RESULT", null);
         receiverRegistered = true; refreshAccounts();
         MAIN.post(() -> { if (!destroyed) discoverModels(); });
     }
