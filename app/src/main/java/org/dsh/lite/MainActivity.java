@@ -78,9 +78,6 @@ public final class MainActivity extends Activity {
         getWindow().setStatusBarColor(Color.TRANSPARENT); getWindow().setNavigationBarColor(Color.TRANSPARENT);
         if (Build.VERSION.SDK_INT >= 30) {
             getWindow().setDecorFitsSystemWindows(false);
-            WindowInsetsController c = getWindow().getInsetsController();
-            int flags = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
-            if (c != null) c.setSystemBarsAppearance(dark ? 0 : flags, flags);
         } else {
             int flags = View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
             if (!dark) flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
@@ -114,6 +111,12 @@ public final class MainActivity extends Activity {
         input.setMinLines(1); input.setMaxLines(5); input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
         input.setBackground(bubble(surface)); input.setPadding(dp(10),dp(8),dp(10),dp(8)); composer.addView(input,weighted());
         send=button("发送"); composer.addView(send); root.addView(composer); setContentView(root); root.requestApplyInsets();
+        // setContentView creates DecorView; only then is Window.getInsetsController safe.
+        if (Build.VERSION.SDK_INT >= 30) {
+            WindowInsetsController c = getWindow().getInsetsController();
+            int flags = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+            if (c != null) c.setSystemBarsAppearance(dark ? 0 : flags, flags);
+        }
         addAccount.setOnClickListener(v -> {
             try { AuthService.begin(this); status.setText("请在浏览器中完成登录，然后返回这里。"); }
             catch (Exception e) { status.setText("无法开始登录："+safeError(e)+" 可重试。"); }
