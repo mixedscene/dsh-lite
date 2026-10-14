@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { createNativeAntigravityTransport, type AntigravityHttpChunk, type AntigravityNativePlugin } from './native'
+import { createNativeAntigravityTransport, type AntigravityHttpChunk, type AntigravityNativeHttpPlugin } from './native'
 
 function mockPlugin() {
   let listener: ((event: AntigravityHttpChunk) => void) | undefined
   let removed = 0
   const cancelled: string[] = []
-  const calls: Parameters<AntigravityNativePlugin['request']>[0][] = []
-  const plugin = {
+  const calls: Parameters<AntigravityNativeHttpPlugin['request']>[0][] = []
+  const plugin: AntigravityNativeHttpPlugin = {
     async addListener(_name: string, callback: (event: AntigravityHttpChunk) => void) { listener = callback; return { async remove() { removed++ } } },
     async cancelRequest({ requestId }: { requestId: string }) { cancelled.push(requestId) },
-    async request(options: Parameters<AntigravityNativePlugin['request']>[0]) { calls.push(options); return { requestId: options.requestId, status: 200, headers: { 'Content-Type': 'text/event-stream' } } },
-  } as AntigravityNativePlugin
+    async request(options: Parameters<AntigravityNativeHttpPlugin['request']>[0]) { calls.push(options); return { requestId: options.requestId, status: 200, headers: { 'Content-Type': 'text/event-stream' } } },
+  }
   return { plugin, calls, cancelled, emit(event: AntigravityHttpChunk) { listener?.(event) }, removed: () => removed }
 }
 const request = { accountId: 'A', url: 'https://daily-cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse', body: '{}', stream: true }

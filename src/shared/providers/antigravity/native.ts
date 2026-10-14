@@ -13,15 +13,19 @@ export interface AntigravityNativePlugin {
   updateAccountCache(options: { accountId: string; project?: string; modelCache?: unknown }): Promise<void>
   importSkill(): Promise<{ name: string; content: string }>
   cancelOAuth(): Promise<void>
-  request(options: { requestId: string; accountId: string; url: string; method?: 'POST' | 'GET'; headers?: Record<string, string>; body?: string; stream?: boolean }): Promise<{ requestId: string; status: number; headers: Record<string, string>; body?: string }>
+  request(options: { requestId: string; accountId: string; url: string; method?: 'POST'; headers?: Record<string, string>; body?: string; stream?: boolean }): Promise<{ requestId: string; status: number; headers: Record<string, string>; body?: string }>
   cancelRequest(options: { requestId: string }): Promise<void>
   addListener(eventName: 'httpChunk', listener: (event: AntigravityHttpChunk) => void): Promise<PluginListenerHandle>
   addListener(eventName: 'accountsChanged', listener: (event: { activeAccountId?: string; oauthPending?: boolean; oauthError?: string }) => void): Promise<PluginListenerHandle>
 }
 export const antigravityNative = registerPlugin<AntigravityNativePlugin>('Antigravity')
 
+export type AntigravityNativeHttpPlugin = Pick<AntigravityNativePlugin, 'request' | 'cancelRequest'> & {
+  addListener(eventName: 'httpChunk', listener: (event: AntigravityHttpChunk) => void): Promise<PluginListenerHandle>
+}
+
 /** Credentials remain native. Register before request: chunks may precede headers. */
-export function createNativeAntigravityTransport(plugin: AntigravityNativePlugin = antigravityNative): AntigravityTransport {
+export function createNativeAntigravityTransport(plugin: AntigravityNativeHttpPlugin = antigravityNative): AntigravityTransport {
   return { async request(options) {
     options.signal?.throwIfAborted()
     const requestId = crypto.randomUUID()
