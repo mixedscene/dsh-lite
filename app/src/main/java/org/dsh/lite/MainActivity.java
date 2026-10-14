@@ -316,7 +316,7 @@ public final class MainActivity extends Activity {
     private void updateControls() {
         if(send==null) return; boolean idle=!streaming;
         accountSpinner.setEnabled(idle && !accountItems.isEmpty()); modelSpinner.setEnabled(idle && !accountId.isEmpty());
-        skillSpinner.setEnabled(idle && !accountId.isEmpty()); addAccount.setEnabled(idle); removeAccount.setEnabled(idle && !accountId.isEmpty());
+        skillSpinner.setEnabled(idle && !accountId.isEmpty() && historyReady); addAccount.setEnabled(idle); removeAccount.setEnabled(idle && !accountId.isEmpty());
         clear.setEnabled(idle && !accountId.isEmpty()); importSkill.setEnabled(idle && !importing);
         deleteSkill.setEnabled(idle && !skillId.isEmpty() && skills.get(skillId)!=null);
         input.setEnabled(idle); send.setText(streaming ? "停止" : "发送"); send.setEnabled(streaming || (!accountId.isEmpty() && historyReady));
