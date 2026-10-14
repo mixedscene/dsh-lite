@@ -1,5 +1,5 @@
 import { SessionSchema, type Session, type SessionMetaRecord } from '@shared/types/session'
-import { SQLiteStorage } from '../platform/sqlite-storage'
+import { getSQLiteStorage, type SQLiteStorage } from '../platform/sqlite-storage'
 import { SQLiteSessionMetaStorage } from '../storage/SQLiteSessionMetaStorage'
 import type { ConversationSkill } from './skills'
 
@@ -8,7 +8,7 @@ export class LiteRepository {
   private meta = new SQLiteSessionMetaStorage()
   private writes: Promise<void> = Promise.resolve()
   private sessionWrites: Promise<void> = Promise.resolve()
-  private get db() { return this.values ??= new SQLiteStorage() }
+  private get db() { return this.values ??= getSQLiteStorage() }
   async get<T>(key: string, fallback: T): Promise<T> {
     const raw = await this.db.getItem(key)
     return raw === null ? fallback : JSON.parse(raw) as T

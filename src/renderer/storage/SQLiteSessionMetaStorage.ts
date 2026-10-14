@@ -54,7 +54,7 @@ export class SQLiteSessionMetaStorage implements SessionMetaStorage {
 
   private async openDatabase(): Promise<void> {
     try {
-      this.sqlite.closeConnection(DB_NAME, false)
+      await this.sqlite.closeConnection(DB_NAME, false)
     } catch {
       // ignore - connection may not exist
     }

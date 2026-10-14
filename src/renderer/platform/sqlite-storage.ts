@@ -14,7 +14,7 @@ export class SQLiteStorage {
   private async initialize(): Promise<void> {
     try {
       // reload的时候会报connection already open错误，所以先关闭
-      this.sqlite.closeConnection('chatbox.db', false)
+      await this.sqlite.closeConnection('chatbox.db', false).catch(() => {})
       this.database = await this.sqlite.createConnection('chatbox.db', false, 'no-encryption', 1, false)
 
       // 创建表
@@ -140,4 +140,9 @@ export class SQLiteStorage {
       await this.database.close()
     }
   }
+}
+
+let sharedStorage: SQLiteStorage | undefined
+export function getSQLiteStorage(): SQLiteStorage {
+  return sharedStorage ??= new SQLiteStorage()
 }

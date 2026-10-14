@@ -57,16 +57,18 @@ function LiteApp(){
   const scroll=useRef<HTMLDivElement>(null)
   const nearBottom=useRef(true)
   const account=accounts.find(a=>a.id===accountId)
-  const replaceSession=(next:Session|null)=>{sessionRef.current=next;store.set(currentSessionIdAtom,next?.id??null);setSession(next);setEditing(null);setVisible(80)}
+  const replaceSession=(next:Session|null)=>{if(next&&next.antigravity?.accountId!==activeId.current)return;sessionRef.current=next;store.set(currentSessionIdAtom,next?.id??null);setSession(next);setEditing(null);setVisible(80)}
   const displayUpdate=(next:Session)=>{if(activeId.current===next.antigravity?.accountId&&sessionRef.current?.id===next.id){sessionRef.current=structuredClone(next);setSession(sessionRef.current)}}
   const refreshList=async(id=activeId.current)=>{const rows=await db.list(id);if(id===activeId.current)setSessions(rows)}
   const newSession=async(id=activeId.current)=>{
     if(!id)return
     const current=accounts.find(a=>a.id===id)
-    const next:Session={id:crypto.randomUUID(),name:'新对话',type:'chat',messages:[],settings:{provider:'antigravity',modelId:modelId||cachedModels(current)[0]?.modelId},antigravity:{accountId:id,project:current?.project,skillIds:[]}}
+    const catalog=cachedModels(current)
+    const preferred=catalog.find(m=>m.modelId===modelId)?.modelId??catalog[0]?.modelId
+    const next:Session={id:crypto.randomUUID(),name:'新对话',type:'chat',messages:[],settings:{provider:'antigravity',modelId:preferred},antigravity:{accountId:id,project:current?.project,skillIds:[]}}
     await db.save(next)
     await db.set(`lite:last-session:${id}`,next.id)
-    if(activeId.current===id){replaceSession(next);await refreshList(id)}
+    if(activeId.current===id){replaceSession(next);setModelId(preferred??'');await refreshList(id)}
   }
   const restore=async(id:string,rows:SessionMetaRecord[])=>{
     const last=await db.get<string>(`lite:last-session:${id}`,'')
@@ -75,18 +77,18 @@ function LiteApp(){
     else await newSession(id)
   }
   const stop=async()=>{abortRef.current?.abort();await taskRef.current?.catch(()=>{})}
+  const accountTransition=(work:()=>Promise<void>):Promise<void>=>{const next=accountSync.current.catch(()=>{}).then(work);accountSync.current=next;return next}
   const switchAccount=async(id:string)=>{
     if(id===activeId.current)return
     setLoading(true);setError('')
-    try{
+    try{await accountTransition(async()=>{
       await stop()
       await antigravityNative.switchAccount({accountId:id})
       verified.current.delete(id);activeId.current=id;setAccountId(id);replaceSession(null);setModels(cachedModels(accounts.find(a=>a.id===id)));setModelId('')
       const rows=await db.list(id);setSessions(rows);await restore(id,rows);setDrawer(null)
-    }catch(e){setError(errorText(e))}finally{setLoading(false)}
+    })}catch(e){setError(errorText(e))}finally{setLoading(false)}
   }
-  const syncAccounts=()=>{
-    const next=accountSync.current.catch(()=>{}).then(async()=>{
+  const syncAccounts=()=>accountTransition(async()=>{
       const result=await antigravityNative.listAccounts()
       setAccounts(result.accounts);setOAuthConfigured(result.oauthConfigured);setOAuthPending(result.oauthPending??false)
       if(result.storageError||result.oauthError)setError(result.storageError??result.oauthError??'')
@@ -97,9 +99,7 @@ function LiteApp(){
         const rows=id?await db.list(id):[];setSessions(rows)
         if(id){await antigravityNative.switchAccount({accountId:id});await restore(id,rows)}
       }
-    })
-    accountSync.current=next;return next
-  }
+  })
   useEffect(()=>{
     let mounted=true
     void (async()=>{try{setSkills(await db.skills());await syncAccounts()}catch(e){if(mounted)setError(errorText(e))}finally{if(mounted)setLoading(false)}})()
@@ -188,7 +188,7 @@ function LiteApp(){
   const importSkill=()=>action(async()=>{const file=await antigravityNative.importSkill();const skill=parseConversationSkill(file.content,file.name,crypto.randomUUID());const next=[...skills,skill];await db.saveSkills(next);setSkills(next);setNotice(`已导入 ${skill.name}${skill.unsupported.length?'；存在不支持的工具依赖，不能启用。':''}`)})
   const toggleSkill=(id:string,on:boolean)=>action(async()=>{if(!sessionRef.current?.antigravity)return;const next=structuredClone(sessionRef.current);if(next.antigravity){const ids=next.antigravity.skillIds??[];next.antigravity.skillIds=on?[...new Set([...ids,id])]:ids.filter(v=>v!==id)}await db.save(next);replaceSession(next)})
   const removeSkill=(id:string)=>action(async()=>{const next=skills.filter(s=>s.id!==id);await db.saveSkills(next);setSkills(next);await toggleSkill(id,false)})
-  const removeAccount=(id:string)=>action(async()=>{await stop();await antigravityNative.removeAccount({accountId:id});verified.current.delete(id);const result=await antigravityNative.listAccounts();setAccounts(result.accounts);activeId.current=result.activeAccountId??result.accounts[0]?.id??'';setAccountId(activeId.current);replaceSession(null);setModels(cachedModels(result.accounts.find(a=>a.id===activeId.current)));setModelId('');const rows=activeId.current?await db.list(activeId.current):[];setSessions(rows);if(activeId.current)await restore(activeId.current,rows)})
+  const removeAccount=(id:string)=>action(()=>accountTransition(async()=>{await stop();await antigravityNative.removeAccount({accountId:id});verified.current.delete(id);const result=await antigravityNative.listAccounts();setAccounts(result.accounts);activeId.current=result.activeAccountId??result.accounts[0]?.id??'';setAccountId(activeId.current);replaceSession(null);setModels(cachedModels(result.accounts.find(a=>a.id===activeId.current)));setModelId('');const rows=activeId.current?await db.list(activeId.current):[];setSessions(rows);if(activeId.current)await restore(activeId.current,rows)}))
   const restoreBranch=(id:string)=>action(async()=>{if(!sessionRef.current)return;const next=structuredClone(sessionRef.current);const branch=next.threads?.find(t=>t.id===id);if(!branch)return;const present={id:crypto.randomUUID(),name:`${next.name} · 当前分支`,createdAt:Date.now(),messages:next.messages};next.messages=branch.messages;next.threads=[...(next.threads??[]).filter(t=>t.id!==id),present];await db.save(next);replaceSession(next);setDrawer(null)})
   const copy=(text:string)=>action(async()=>{if(navigator.clipboard){await navigator.clipboard.writeText(text)}else{const node=document.createElement('textarea');node.value=text;document.body.append(node);node.select();const copied=document.execCommand('copy');node.remove();if(!copied)throw new Error('复制失败，请长按选择文本。')}setNotice('已复制。')})
   return <MantineProvider forceColorScheme={dark?'dark':'light'}><main className={`lite ${dark?'dark':''}`}>

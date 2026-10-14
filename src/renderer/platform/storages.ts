@@ -1,4 +1,4 @@
-import { SQLiteStorage } from './sqlite-storage'
+import { getSQLiteStorage } from './sqlite-storage'
 import localforage from 'localforage'
 import { StorageKey } from '@/storage'
 import platform from '.'
@@ -97,7 +97,7 @@ export class MobileSQLiteStorage implements Storage {
   public getStorageType(): string {
     return 'MOBILE_SQLITE'
   }
-  private sqliteStorage = new SQLiteStorage()
+  private get sqliteStorage() { return getSQLiteStorage() }
 
   public async setStoreValue(key: string, value: any) {
     await this.sqliteStorage.setItem(key, JSON.stringify(value))

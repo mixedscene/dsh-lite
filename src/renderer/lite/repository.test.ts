@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Session, SessionMetaRecord } from '@shared/types/session'
 const memory = vi.hoisted(() => ({values: new Map<string,string>(), meta: new Map<string,SessionMetaRecord>()}))
-vi.mock('../platform/sqlite-storage', () => ({SQLiteStorage: class {
+vi.mock('../platform/sqlite-storage', () => ({getSQLiteStorage: () => ({
   async getItem(key:string) { return memory.values.get(key)??null }
   async setItem(key:string,value:string) { memory.values.set(key,value) }
-}}))
+})}))
 vi.mock('../storage/SQLiteSessionMetaStorage', () => ({SQLiteSessionMetaStorage: class {
   async getById(id:string) { return memory.meta.get(id)??null }
   async createMany(rows:SessionMetaRecord[]) { for(const row of rows) memory.meta.set(row.id,row) }
