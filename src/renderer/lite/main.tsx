@@ -117,7 +117,7 @@ function LiteApp(){
   const addAccount=()=>action(async()=>{
     if(!oauthConfigured)throw new Error('此构建未配置 Google OAuth 客户端，请使用配置完成的 APK。')
     await stop();setBusy(true);setOAuthPending(true)
-    try{await antigravityNative.addAccount({timeoutMs:170000});await syncAccounts();setDrawer(null)}finally{setBusy(false);setOAuthPending(false)}
+    try{await antigravityNative.addAccount({timeoutMs:170000});await syncAccounts();const id=activeId.current;verified.current.delete(id);const found=await discover(id);if(activeId.current===id&&sessionRef.current){const next=structuredClone(sessionRef.current);const chosen=found.models.some(m=>m.modelId===next.settings?.modelId)?next.settings?.modelId:found.models[0].modelId;next.settings={...next.settings,modelId:chosen};setModelId(chosen??'');replaceSession(next);await db.save(next)}setDrawer(null)}finally{setBusy(false);setOAuthPending(false)}
   })
   const discover=async(id:string,signal?:AbortSignal)=>{
     const result=await client.discoverModels(id,signal)
@@ -136,6 +136,7 @@ function LiteApp(){
     if(busy||loading||!sessionRef.current||!activeId.current)return
     const current=structuredClone(sessionRef.current)
     const id=activeId.current
+    if(current.antigravity?.accountId!==id){setError('会话与当前账号不匹配，请重新打开该账号的会话。');return}
     const controller=new AbortController();abortRef.current=controller;setBusy(true);setError('');setNotice('');nearBottom.current=true
     const work=(async()=>{
       let assistant:Message|undefined
@@ -182,7 +183,7 @@ function LiteApp(){
     })()
     taskRef.current=work;await work
   }
-  const loadSession=(id:string)=>action(async()=>{setLoading(true);try{await stop();const next=await db.load(id,activeId.current);replaceSession(next);setModelId(next.settings?.modelId??'');await db.set(`lite:last-session:${activeId.current}`,id);setDrawer(null);nearBottom.current=true}finally{setLoading(false)}})
+  const loadSession=(id:string)=>action(async()=>{const owner=activeId.current;setLoading(true);try{await stop();const next=await db.load(id,owner);if(activeId.current!==owner)return;replaceSession(next);setModelId(next.settings?.modelId??'');await db.set(`lite:last-session:${owner}`,id);if(activeId.current===owner)setDrawer(null);nearBottom.current=true}finally{setLoading(false)}})
   const selectModel=(chosen:string|null)=>action(async()=>{if(!chosen||!sessionRef.current)return;setModelId(chosen);const next={...sessionRef.current,settings:{...sessionRef.current.settings,modelId:chosen}};replaceSession(next);await db.save(next)})
   const importSkill=()=>action(async()=>{const file=await antigravityNative.importSkill();const skill=parseConversationSkill(file.content,file.name,crypto.randomUUID());const next=[...skills,skill];await db.saveSkills(next);setSkills(next);setNotice(`已导入 ${skill.name}${skill.unsupported.length?'；存在不支持的工具依赖，不能启用。':''}`)})
   const toggleSkill=(id:string,on:boolean)=>action(async()=>{if(!sessionRef.current?.antigravity)return;const next=structuredClone(sessionRef.current);if(next.antigravity){const ids=next.antigravity.skillIds??[];next.antigravity.skillIds=on?[...new Set([...ids,id])]:ids.filter(v=>v!==id)}await db.save(next);replaceSession(next)})
