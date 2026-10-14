@@ -39,6 +39,16 @@ export function replayParts(raw: readonly AntigravityPart[], modelId: string): A
       if (part.thoughtSignature !== undefined) previous.thoughtSignature = part.thoughtSignature
     } else result.push(part)
   }
+  // Validate only the final logical blocks: a signature may arrive in a later SSE chunk.
+  for (const part of result) {
+    if (part.thought === true && typeof part.text === 'string' && part.text &&
+      (typeof part.thoughtSignature !== 'string' || !part.thoughtSignature)) {
+      throw new Error('Claude returned a thought block without a complete signature')
+    }
+    if (part.thought !== true && part.thoughtSignature !== undefined) {
+      throw new Error('Claude returned a signature on a nonthought block')
+    }
+  }
   return result
 }
 export function visibleParts(raw: readonly AntigravityPart[]): MessageContentParts {

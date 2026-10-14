@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Session, SessionMetaRecord } from '@shared/types/session'
 const memory = vi.hoisted(() => ({values: new Map<string,string>(), meta: new Map<string,SessionMetaRecord>()}))
 vi.mock('../platform/sqlite-storage', () => ({getSQLiteStorage: () => ({
-  async getItem(key:string) { return memory.values.get(key)??null }
+  async getItem(key:string) { return memory.values.get(key)??null },
   async setItem(key:string,value:string) { memory.values.set(key,value) }
 })}))
 vi.mock('../storage/SQLiteSessionMetaStorage', () => ({SQLiteSessionMetaStorage: class {

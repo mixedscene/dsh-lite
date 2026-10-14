@@ -48,6 +48,32 @@ describe('SSE framing', () => {
 })
 
 describe('protocol replay fixtures', () => {
+  const invalidClaudeBlocks: [string, AntigravityPart[]][] = [
+    ['unsigned thought', [{ thought: true, text: 'thinking' }, { text: 'answer' }]],
+    ['empty thought signature', [{ thought: true, text: 'thinking', thoughtSignature: '' }, { text: 'answer' }]],
+    ['unsigned later thought', [{ thought: true, text: 'first', thoughtSignature: 'sig-first' }, { text: 'answer' }, { thought: true, text: 'second' }]],
+    ['nonthought signature', [{ thought: true, text: 'thinking', thoughtSignature: 'sig-thought' }, { text: 'answer', thoughtSignature: 'sig-on-text' }]],
+  ]
+  it.each(invalidClaudeBlocks)('rejects completed Claude %s while preserving Gemini raw parts', (_name: string, raw: AntigravityPart[]) => {
+    expect(() => replayParts(raw, 'claude-sonnet-thinking')).toThrow(/signature/)
+    expect(replayParts(raw, 'gemini-3-pro')).toEqual(raw)
+  })
+  it.each(invalidClaudeBlocks)('never completes STOP with Claude %s', async (_name: string, raw: AntigravityPart[]) => {
+    const { client } = fixture([raw.map((part) => event([part])).join('') + event([], 'STOP')])
+    const updates: AntigravityUpdate[] = []
+    await expect(client.chat({ ...scope, modelId: 'claude-sonnet-thinking', messages: [user('hello')], onUpdate: (update) => updates.push(update) })).rejects.toThrow(/signature/)
+    expect(updates.at(-1)!.antigravity).toMatchObject({ complete: false, status: 'failed', finishReason: 'STOP', parts: raw })
+    expect(updates.every((update) => !update.antigravity.complete)).toBe(true)
+  })
+  it('keeps thoughts provisional until a later signature chunk and valid finish', async () => {
+    const raw = [{ thought: true, text: 'thinking' }, { thoughtSignature: 'late-signature' }, { text: 'answer' }]
+    const { client } = fixture([raw.map((part) => event([part])).join('') + event([], 'STOP')])
+    const updates: AntigravityUpdate[] = []
+    const result = await client.chat({ ...scope, modelId: 'claude-sonnet-thinking', messages: [user('hello')], onUpdate: (update) => updates.push(update) })
+    expect(updates[0].antigravity).toMatchObject({ complete: false, status: 'streaming', parts: [raw[0]] })
+    expect(updates.slice(0, -1).every((update) => !update.antigravity.complete)).toBe(true)
+    expect(result.antigravity).toMatchObject({ complete: true, status: 'completed', parts: [{ thought: true, text: 'thinking', thoughtSignature: 'late-signature' }, { text: 'answer' }] })
+  })
   it('replays Gemini three rounds after restart with every raw signature-only part intact', async () => {
     const signed: AntigravityPart[] = [{ text: '思考', thought: true }, { thoughtSignature: 'opaque-A/==', thought: true }, { text: '青竹741' }, { thoughtSignature: 'opaque-B/==' }]
     const { client, requests } = fixture([signed.map((part) => event([part])).join('') + event([], 'STOP'), event([{ text: '青竹741' }, { thoughtSignature: 'second/==' }], 'STOP'), event([{ text: '青竹852' }], 'STOP')])

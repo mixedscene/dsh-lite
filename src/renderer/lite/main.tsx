@@ -23,6 +23,11 @@ const store=createStore()
 const client=new AntigravityClient(createNativeAntigravityTransport())
 const textOf=(message:Message)=>message.contentParts.filter(p=>p.type==='text').map(p=>p.text).join('')
 const errorText=(error:unknown)=>error instanceof Error?error.message:'操作失败，请重试。'
+function markdownText(node:React.ReactNode):string {
+  if(typeof node==='string'||typeof node==='number')return String(node)
+  if(Array.isArray(node))return node.map(markdownText).join('')
+  return React.isValidElement<{children?:React.ReactNode}>(node)?markdownText(node.props.children):''
+}
 function cachedModels(account?:AntigravityAccount):ProviderModelInfo[] {
   const value=account?.modelCache
   if(!value || typeof value!=='object' || !('models' in value) || !Array.isArray(value.models)) return []
@@ -133,7 +138,7 @@ function LiteApp(){
     taskRef.current=work;await work
   })
   const generate=async(userText?:string,regenerateUserId?:string)=>{
-    if(busy||loading||!sessionRef.current||!activeId.current)return
+    if(busy||loading||oauthPending||!sessionRef.current||!activeId.current)return
     const current=structuredClone(sessionRef.current)
     const id=activeId.current
     if(current.antigravity?.accountId!==id){setError('会话与当前账号不匹配，请重新打开该账号的会话。');return}
@@ -204,14 +209,14 @@ function LiteApp(){
           <div className="messagehead"><strong>{message.role==='user'?'你':message.model??'助手'}</strong><span>{message.generating?'生成中…':message.antigravity&&!message.antigravity.complete?'未完成':''}</span></div>
           {editing?.id===message.id?<><Textarea aria-label="编辑消息" value={editing.text} onChange={e=>setEditing({...editing,text:e.currentTarget.value})} minRows={3} autosize/><Button size="xs" disabled={!editing.text.trim()||busy} onClick={()=>{void generate(editing.text,editing.id);setEditing(null)}}>保存并重新生成</Button><Button size="xs" variant="subtle" onClick={()=>setEditing(null)}>取消</Button></>:<>
             {message.contentParts.filter(p=>p.type==='reasoning').map((p,i)=><details key={`r${i}`}><summary>思考过程</summary><div className="markdown"><ReactMarkdown remarkPlugins={[remarkGfm,remarkBreaks]}>{p.text}</ReactMarkdown></div></details>)}
-            <div className="markdown"><ReactMarkdown remarkPlugins={[remarkGfm,remarkBreaks]} components={{a:({href,children})=><a href={href} onClick={e=>{e.preventDefault();if(href&&/^https?:\/\//i.test(href))void Browser.open({url:href})}}>{children}</a>,img:({alt})=><span>{alt??'图片'}</span>}}>{textOf(message)}</ReactMarkdown></div>
+            <div className="markdown"><ReactMarkdown remarkPlugins={[remarkGfm,remarkBreaks]} components={{pre:({children})=><div className="codeblock"><Button size="compact-xs" variant="subtle" onClick={()=>void copy(markdownText(children))}>复制代码</Button><pre>{children}</pre></div>,a:({href,children})=><a href={href} onClick={e=>{e.preventDefault();if(href&&/^https?:\/\//i.test(href))void Browser.open({url:href})}}>{children}</a>,img:({alt})=><span>{alt??'图片'}</span>}}>{textOf(message)}</ReactMarkdown></div>
             {message.error&&<p className="messageerror">{message.error}</p>}
             {!message.generating&&<div className="messageactions"><Button size="compact-xs" variant="subtle" onClick={()=>void copy(textOf(message))}>复制</Button>{message.role==='user'?<Button size="compact-xs" variant="subtle" disabled={busy||loading} onClick={()=>setEditing({id:message.id,text:textOf(message)})}>编辑</Button>:<Button size="compact-xs" variant="subtle" disabled={busy||loading} onClick={()=>{const at=session?.messages.findIndex(m=>m.id===message.id)??-1;const user=session?.messages.slice(0,at).findLast(m=>m.role==='user');if(user)void generate(undefined,user.id)}}>重新生成</Button>}</div>}
           </>}
         </article>)}
         {session&&!session.messages.length&&<div className="empty">选择模型后开始聊天。Skill 可在右上角为当前会话启用。</div>}
       </div>
-      <footer className="composer"><MessageInputField key={`${accountId}:${session?.id??'none'}`} ref={input} isNewSession={false} viewportHeight={window.visualViewport?.height??window.innerHeight} isReadOnly={loading||!session} placeholder="输入消息，发送开始对话" ariaLabel="消息输入框" autoFocus={false} onValueChange={setDraft} onKeyDown={e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)&&!e.nativeEvent.isComposing){e.preventDefault();void generate(input.current?.getValue())}}} onPaste={()=>{}}/><div className="composeractions"><small>{session?.antigravity?.skillIds?.length?`已启用 ${session.antigravity.skillIds.length} 个 Skill`:'仅文本对话'}</small>{busy?<Button color="red" onClick={()=>void (oauthPending?antigravityNative.cancelOAuth():stop())}>停止</Button>:<Button disabled={loading||!draft.trim()||!session} onClick={()=>void generate(input.current?.getValue())}>发送</Button>}</div></footer>
+      <footer className="composer"><MessageInputField key={`${accountId}:${session?.id??'none'}`} ref={input} isNewSession={false} viewportHeight={window.visualViewport?.height??window.innerHeight} isReadOnly={loading||!session} placeholder="输入消息，发送开始对话" ariaLabel="消息输入框" autoFocus={false} onValueChange={setDraft} onKeyDown={e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)&&!e.nativeEvent.isComposing){e.preventDefault();void generate(input.current?.getValue())}}} onPaste={()=>{}}/><div className="composeractions"><small>{session?.antigravity?.skillIds?.length?`已启用 ${session.antigravity.skillIds.length} 个 Skill`:'仅文本对话'}</small>{busy?<Button color="red" onClick={()=>void (oauthPending?antigravityNative.cancelOAuth():stop())}>停止</Button>:<Button disabled={loading||oauthPending||!draft.trim()||!session} onClick={()=>void generate(input.current?.getValue())}>发送</Button>}</div></footer>
     </>}
     <Drawer opened={drawer!==null} onClose={()=>setDrawer(null)} title={drawer==='chats'?'会话':drawer==='accounts'?'Google 账号':'对话 Skills'} size="90%">
       {drawer==='chats'&&<div className="drawerlist"><Button disabled={!accountId||busy||loading} onClick={()=>void action(async()=>{await newSession();setDrawer(null);nearBottom.current=true})}>新建对话</Button>{sessions.map(row=><Button variant={session?.id===row.id?'light':'subtle'} key={row.id} onClick={()=>void loadSession(row.id)} disabled={loading}>{row.name}</Button>)}{!!session?.threads?.length&&<><h3>历史分支</h3>{session.threads.map(t=><Button key={t.id} variant="subtle" disabled={busy} onClick={()=>void restoreBranch(t.id)}>{t.name}</Button>)}</>}</div>}
