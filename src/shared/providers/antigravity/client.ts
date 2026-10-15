@@ -26,7 +26,7 @@ export const ANTIGRAVITY_CATALOG_HOSTS = [ANTIGRAVITY_DAILY_HOST, ANTIGRAVITY_DI
 const object = (value: unknown): Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
 const numeric = (value: unknown): number | undefined => typeof value === 'number' && Number.isFinite(value) ? value : undefined
 export class AntigravityServiceError extends Error {
-  constructor(public status: number, public retryAfter?: string | null, detail?: string, context?: string) {
+  constructor(public status: number, public retryAfter?: string | null, public detail?: string, public context?: string) {
     super([status === 401 ? 'Google authorization expired. Sign in again.' : status === 403 ? 'This Google account does not have permission to use the requested Antigravity service or model.' : status === 429 ? 'Antigravity rate limit reached. Wait before trying again.' : status === 400 ? 'Antigravity rejected the protocol or model parameters (400).' : `Antigravity request failed (${status}).`, detail, context ? `[${context}]` : ''].filter(Boolean).join(' '))
     this.name = 'AntigravityServiceError'
   }
