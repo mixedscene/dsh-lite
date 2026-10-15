@@ -10,6 +10,16 @@ import packageJson from './release/app/package.json'
  * Vite plugin to inject <base href="/"> for web builds
  * This ensures relative paths resolve correctly for SPA routes like /session/xxx
  */
+function liteEntryPlugin(): Plugin {
+  return {
+    name: 'chatbox-lite-entry',
+    transformIndexHtml: {
+      order: 'pre',
+      handler: () => '<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#111827"><title>Chatbox Lite</title></head><body><div id="root"></div><script type="module" src="/lite/main.tsx"></script></body></html>',
+    },
+  }
+}
+
 export function injectBaseTag(): Plugin {
   return {
     name: 'inject-base-tag',
@@ -260,10 +270,7 @@ export default defineConfig(({ mode }) => {
           generatedRouteTree: './src/renderer/routeTree.gen.ts',
         }) : undefined,
         react({}),
-        isLite ? {
-          name: 'chatbox-lite-entry',
-          transformIndexHtml: { order: 'pre', handler: () => `<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#111827"><title>Chatbox Lite</title></head><body><div id="root"></div><script type="module" src="/lite/main.tsx"></script></body></html>` },
-        } : undefined,
+        isLite ? liteEntryPlugin() : undefined,
         dvhToVh(),
         injectViewportContent(isDesktop),
         isWeb ? injectBaseTag() : undefined,

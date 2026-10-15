@@ -6,4 +6,5 @@ export const WEB_SEARCH_PROVIDERS = [
   { value: 'searxng', label: 'SearXNG' },
 ] as const
 
-export type WebSearchProviderValue = (typeof WEB_SEARCH_PROVIDERS)[number]['value']
+// Keep the legacy value readable for old settings; the proprietary option is not exposed in the UI.
+export type WebSearchProviderValue = (typeof WEB_SEARCH_PROVIDERS)[number]['value'] | 'build-in'

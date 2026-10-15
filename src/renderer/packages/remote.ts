@@ -645,7 +645,13 @@ export async function getModelManifest(params: { aiProvider: ModelProvider; lice
       ...(provider?.defaultSettings?.models || []),
     ].map((model) => [model.modelId, model]))
     const models: RemoteModelInfo[] = [...localModels.values()].map((model) => ({
-      ...model, modelName: model.nickname || model.modelId,
+      modelId: model.modelId,
+      modelName: model.nickname || model.modelId,
+      ...(model.labels?.length ? { labels: model.labels } : {}),
+      ...(model.type ? { type: model.type } : {}),
+      ...(model.apiStyle ? { apiStyle: model.apiStyle } : {}),
+      ...(model.contextWindow ? { contextWindow: model.contextWindow } : {}),
+      ...(model.capabilities?.length ? { capabilities: model.capabilities.filter((capability): capability is NonNullable<RemoteModelInfo['capabilities']>[number] => capability === 'vision' || capability === 'reasoning' || capability === 'tool_use') } : {}),
     }))
     // Keep image creation available without the proprietary catalog endpoint.
     const imageIds = params.aiProvider === ModelProviderEnum.OpenAI

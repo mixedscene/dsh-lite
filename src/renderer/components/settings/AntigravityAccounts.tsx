@@ -59,7 +59,7 @@ export function AntigravityAccounts({ onAccountChange }: { onAccountChange?: () 
     let disposed = false
     const handles: PluginListenerHandle[] = []
     const retain = (handle: PluginListenerHandle) => { if (disposed) void handle.remove(); else handles.push(handle) }
-    const update = () => { void refresh().catch((reason) => { if (!disposed) setError(reason instanceof Error ? reason.message : t('Failed to load accounts')) }) }
+    const update = () => { void refresh().catch((reason) => { if (!disposed) setError(reason instanceof Error ? reason.message : String(t('Failed to load accounts'))) }) }
     update()
     void antigravityNative.addListener('accountsChanged', update).then(retain)
     void App.addListener('appStateChange', ({ isActive }) => { if (isActive) update() }).then(retain)
@@ -68,7 +68,7 @@ export function AntigravityAccounts({ onAccountChange }: { onAccountChange?: () 
   const run = async (operation: () => Promise<void>) => {
     setBusy(true); setError('')
     try { await operation() }
-    catch (reason) { if (mounted.current) setError(reason instanceof Error ? reason.message : t('Operation failed')) }
+    catch (reason) { if (mounted.current) setError(reason instanceof Error ? reason.message : String(t('Operation failed'))) }
     finally { if (mounted.current) { await refresh().catch(() => {}); setBusy(false) } }
   }
   const active = state?.accounts.find((account) => account.id === state.activeAccountId)
