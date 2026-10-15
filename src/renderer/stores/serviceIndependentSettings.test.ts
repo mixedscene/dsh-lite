@@ -63,7 +63,7 @@ describe('getServiceIndependentSettingsPatch', () => {
         webSearch: { provider: 'bing' },
         documentParser: { type: 'none' },
       },
-      mcp: { enabledBuiltinServers: [] },
+      mcp: { servers: [], enabledBuiltinServers: [] },
       favoritedModels: [{ provider: 'openai', model: 'gpt-4o-mini' }],
     })
   })
