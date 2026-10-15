@@ -184,6 +184,15 @@ describe('completion/error boundaries', () => {
     await expect(promise).rejects.toMatchObject({ status: 429, retryAfter: '30' })
     expect(count).toBe(1)
   })
+  it('reports the host that serves the account when the fallback fails too', async () => {
+    const client = new AntigravityClient({ async request(options) {
+      return options.url.startsWith('https://daily') ? new Response('Requested entity was not found.', { status: 404 }) : new Response('rate limited', { status: 429 })
+    } })
+    const promise = client.chat({ ...scope, messages: [user('hello')] })
+    await expect(promise).rejects.toMatchObject({ status: 404 })
+    await expect(promise).rejects.toThrow(/The fallback host answered 429\./)
+    await expect(promise).rejects.toThrow(/\[daily-cloudcode-pa\.googleapis\.com/)
+  })
   it('sends a skill once in systemInstruction', async () => {
     const { client, requests } = fixture([event([{ text: 'ok' }], 'STOP')])
     await client.chat({ ...scope, messages: [user('hello')], systemInstruction: 'SKILL be concise' })
@@ -200,6 +209,26 @@ describe('account-scoped discovery', () => {
     expect(calls.map((call) => call.accountId)).toEqual(['account-B', 'account-B'])
     expect(JSON.parse(calls[0].body)).toEqual({ metadata: { ideType: 'ANTIGRAVITY', pluginType: 'GEMINI' } })
     expect(JSON.parse(calls[1].body)).toEqual({ project: 'discovered-project' })
+  })
+  it('reads the catalog from the host that serves generation', async () => {
+    const urls: string[] = []
+    const client = new AntigravityClient({ async request(options) {
+      urls.push(options.url)
+      return options.url.includes('loadCodeAssist') ? Response.json({ cloudaicompanionProject: 'p' }) : Response.json({ models: { 'gemini-3.8-flash-high': { displayName: 'Gemini 3.8 Flash (High)' } } })
+    } })
+    expect((await client.discoverModels('account-B')).models.map((model) => model.modelId)).toEqual(['gemini-3.8-flash-high'])
+    expect(urls).toEqual(['https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist', 'https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels'])
+  })
+  it('falls back to the production catalog when the daily catalog is unavailable', async () => {
+    const urls: string[] = []
+    const client = new AntigravityClient({ async request(options) {
+      urls.push(options.url)
+      if (options.url.includes('loadCodeAssist')) return Response.json({ cloudaicompanionProject: 'p' })
+      if (options.url.startsWith('https://daily')) return new Response('Requested entity was not found.', { status: 404 })
+      return Response.json({ models: { 'gemini-3.9-flash-low': { displayName: 'Gemini 3.9 Flash (Low)' } } })
+    } })
+    expect((await client.discoverModels('account-B')).models.map((model) => model.modelId)).toEqual(['gemini-3.9-flash-low'])
+    expect(urls).toHaveLength(3)
   })
   it('does not onboard or retry missing projects', async () => {
     let count = 0

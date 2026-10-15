@@ -4,6 +4,7 @@ import { readSSE } from './sse'
 import type { AntigravityChatOptions, AntigravityChatResult, AntigravityDiscovery, AntigravityPart, AntigravityTransport } from './types'
 
 export const ANTIGRAVITY_DISCOVERY_HOST = 'https://cloudcode-pa.googleapis.com'
+const ANTIGRAVITY_DAILY_HOST = 'https://daily-cloudcode-pa.googleapis.com'
 const ANTIGRAVITY_STREAM_PATH = '/v1internal:streamGenerateContent?alt=sse'
 /**
  * Google partitions generation by account tier. Personal/consumer accounts (Free, Pro, Ultra,
@@ -12,8 +13,16 @@ const ANTIGRAVITY_STREAM_PATH = '/v1internal:streamGenerateContent?alt=sse'
  * client binds consumer accounts to daily and never falls back, so daily is attempted first and
  * production stays as the fallback for licensed/enterprise accounts.
  */
-export const ANTIGRAVITY_STREAM_URLS = [`https://daily-cloudcode-pa.googleapis.com${ANTIGRAVITY_STREAM_PATH}`, `${ANTIGRAVITY_DISCOVERY_HOST}${ANTIGRAVITY_STREAM_PATH}`]
+export const ANTIGRAVITY_STREAM_URLS = [`${ANTIGRAVITY_DAILY_HOST}${ANTIGRAVITY_STREAM_PATH}`, `${ANTIGRAVITY_DISCOVERY_HOST}${ANTIGRAVITY_STREAM_PATH}`]
 export const ANTIGRAVITY_STREAM_URL = ANTIGRAVITY_STREAM_URLS[0]
+/**
+ * The catalog has to be read from the host that serves generation. The production catalog keeps
+ * advertising families the daily host no longer resolves (gemini-3.5/3.6/3.7), so the picker used to
+ * offer them and every attempt ended in 404 on daily -> fallback -> 429 on production, which looks
+ * like an exhausted quota. `loadCodeAssist` still runs on the production host because that is where
+ * the account's project and entitlements are resolved.
+ */
+export const ANTIGRAVITY_CATALOG_HOSTS = [ANTIGRAVITY_DAILY_HOST, ANTIGRAVITY_DISCOVERY_HOST]
 const object = (value: unknown): Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
 const numeric = (value: unknown): number | undefined => typeof value === 'number' && Number.isFinite(value) ? value : undefined
 export class AntigravityServiceError extends Error {
@@ -38,6 +47,22 @@ async function checked(response: Response, context?: string): Promise<Response> 
   return response
 }
 const contextOf = (url: string, extra?: string): string => [url.replace(/^https:\/\//, ''), extra].filter(Boolean).join(' · ')
+function toModelInfos(rawModels: unknown): ProviderModelInfo[] {
+  if (!rawModels || typeof rawModels !== 'object') return []
+  const entries = Array.isArray(rawModels) ? rawModels.map((model) => { const value = object(model); return [value.id ?? value.modelId ?? value.name, value] as const }) : Object.entries(rawModels)
+  const models: ProviderModelInfo[] = []
+  const seen = new Set<string>()
+  for (const [id, value] of entries) {
+    if (typeof id !== 'string' || !id || seen.has(id)) continue
+    const model = object(value)
+    seen.add(id)
+    models.push({ modelId: id, nickname: typeof model.displayName === 'string' ? model.displayName : id,
+      capabilities: /gemini|claude/i.test(id) ? ['reasoning'] : [],
+      contextWindow: numeric(model.inputTokenLimit), maxOutput: numeric(model.outputTokenLimit),
+    })
+  }
+  return models
+}
 export class AntigravityClient {
   constructor(private readonly transport: AntigravityTransport) {}
 
@@ -51,26 +76,24 @@ export class AntigravityClient {
     const rawProject = loaded.cloudaicompanionProject
     const project = typeof rawProject === 'string' ? rawProject : object(rawProject).id
     if (typeof project !== 'string' || !project.trim()) throw new Error('This account has no Antigravity project. Check service eligibility and required consent in Google; the app cannot accept agreements automatically.')
-    const response = await checked(await this.transport.request({ accountId, signal,
-      url: `${ANTIGRAVITY_DISCOVERY_HOST}/v1internal:fetchAvailableModels`, body: JSON.stringify({ project }),
-    }), 'v1internal:fetchAvailableModels')
-    const catalog = object(await response.json())
-    signal?.throwIfAborted()
-    const rawModels = catalog.models
-    if (!rawModels || typeof rawModels !== 'object') throw new Error('Antigravity returned no model catalog for this account')
-    const entries = Array.isArray(rawModels) ? rawModels.map((model) => { const value = object(model); return [value.id ?? value.modelId ?? value.name, value] as const }) : Object.entries(rawModels)
-    const models: ProviderModelInfo[] = []
-    const seen = new Set<string>()
-    for (const [id, value] of entries) {
-      if (typeof id !== 'string' || !id || seen.has(id)) continue
-      const model = object(value)
-      seen.add(id)
-      models.push({ modelId: id, nickname: typeof model.displayName === 'string' ? model.displayName : id,
-        capabilities: /gemini|claude/i.test(id) ? ['reasoning'] : [],
-        contextWindow: numeric(model.inputTokenLimit), maxOutput: numeric(model.outputTokenLimit),
-      })
+    let models: ProviderModelInfo[] = []
+    let failure: unknown
+    for (const host of ANTIGRAVITY_CATALOG_HOSTS) {
+      try {
+        const response = await checked(await this.transport.request({ accountId, signal,
+          url: `${host}/v1internal:fetchAvailableModels`, body: JSON.stringify({ project }),
+        }), 'v1internal:fetchAvailableModels')
+        const catalog = object(await response.json())
+        signal?.throwIfAborted()
+        const parsed = toModelInfos(catalog.models)
+        if (!parsed.length) throw new Error('No Antigravity models are available for this account')
+        models = parsed
+        break
+      } catch (error) {
+        if (!failure) failure = error
+      }
     }
-    if (!models.length) throw new Error('No Antigravity models are available for this account')
+    if (!models.length) throw failure ?? new Error('Antigravity returned no model catalog for this account')
     // The catalog keeps every concrete tier: the picker aggregates families for display, and the
     // account cache needs the tier ids so a request can be resolved back onto a published one.
     return { project, models }
@@ -112,7 +135,14 @@ export class AntigravityClient {
           response = await checked(await this.transport.request({ accountId: options.accountId, signal: options.signal, stream: true, url, body: streamBody() }), contextOf(url, `model ${options.modelId}`))
           break
         } catch (error) {
-          if (!(error instanceof AntigravityServiceError) || error.status !== 404) throw error
+          if (!(error instanceof AntigravityServiceError) || error.status !== 404) {
+            // The first host is the one that serves this account, so its answer explains the failure
+            // best. A 404 there plus a 429 here means the id is not served for this tier, not that the
+            // quota ran out, so the fallback status is folded into the reported detail.
+            if (failure instanceof AntigravityServiceError) throw new AntigravityServiceError(failure.status, failure.retryAfter,
+              [failure.detail, `The fallback host answered ${error instanceof AntigravityServiceError ? `${error.status}.` : 'with an error.'}`].filter(Boolean).join(' '), failure.context)
+            throw error
+          }
           if (!failure) failure = error
         }
       }
