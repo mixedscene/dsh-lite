@@ -35,6 +35,11 @@ export const useProviders = () => {
             (!p.isCustom &&
               (providerSettings?.apiKey ||
                 isUsingOAuth(providerSettings || {}, platform.type) ||
+                // Antigravity has neither an API key nor the shared OAuth credentials on mobile:
+                // it signs in through the native Google account store and keeps only the
+                // discovered model catalog in settings, so that catalog is the "configured"
+                // signal here.
+                (p.id === 'antigravity' && platform.type === 'mobile' && !!providerSettings?.models?.length) ||
                 (p.id === ModelProviderEnum.Bedrock && providerSettings?.accessKey && providerSettings?.secretKey))) ||
             ((p.isCustom || p.id === ModelProviderEnum.Ollama || p.id === ModelProviderEnum.LMStudio) &&
               providerSettings?.models?.length)
