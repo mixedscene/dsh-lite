@@ -35,13 +35,6 @@ function MessageStatus(props: { status: NonNullable<Message['status']>[number] }
             )}
           </span>
         </LoadingBubble>
-
-                  ></LinkTargetBlank>
-                ),
-              }}
-            />
-          </Typography>
-        )}
       </div>
     )
   }
@@ -58,13 +51,6 @@ function MessageStatus(props: { status: NonNullable<Message['status']>[number] }
             )}
           </span>
         </LoadingBubble>
-
-                  ></LinkTargetBlank>
-                ),
-              }}
-            />
-          </Typography>
-        )}
       </div>
     )
   }
