@@ -4,22 +4,39 @@ import { readSSE } from './sse'
 import type { AntigravityChatOptions, AntigravityChatResult, AntigravityDiscovery, AntigravityPart, AntigravityTransport } from './types'
 
 export const ANTIGRAVITY_DISCOVERY_HOST = 'https://cloudcode-pa.googleapis.com'
-export const ANTIGRAVITY_STREAM_URL = 'https://daily-cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse'
+const ANTIGRAVITY_STREAM_PATH = '/v1internal:streamGenerateContent?alt=sse'
+/**
+ * Generation runs on the host that served the model catalog first: a catalog fetched
+ * from one host can name a model the other host does not know, which surfaces as a
+ * bare 404 "Requested entity was not found". The daily host stays as a fallback for
+ * accounts whose tier is only served there.
+ */
+export const ANTIGRAVITY_STREAM_URLS = [`${ANTIGRAVITY_DISCOVERY_HOST}${ANTIGRAVITY_STREAM_PATH}`, `https://daily-cloudcode-pa.googleapis.com${ANTIGRAVITY_STREAM_PATH}`]
+export const ANTIGRAVITY_STREAM_URL = ANTIGRAVITY_STREAM_URLS[0]
 const object = (value: unknown): Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
 const numeric = (value: unknown): number | undefined => typeof value === 'number' && Number.isFinite(value) ? value : undefined
 export class AntigravityServiceError extends Error {
-  constructor(public status: number, public retryAfter?: string | null) {
-    super(status === 401 ? 'Google authorization expired. Sign in again.' : status === 403 ? 'This Google account does not have permission to use the requested Antigravity service or model.' : status === 429 ? 'Antigravity rate limit reached. Wait before trying again.' : status === 400 ? 'Antigravity rejected the protocol or model parameters (400).' : `Antigravity request failed (${status}).`)
+  constructor(public status: number, public retryAfter?: string | null, detail?: string, context?: string) {
+    super([status === 401 ? 'Google authorization expired. Sign in again.' : status === 403 ? 'This Google account does not have permission to use the requested Antigravity service or model.' : status === 429 ? 'Antigravity rate limit reached. Wait before trying again.' : status === 400 ? 'Antigravity rejected the protocol or model parameters (400).' : `Antigravity request failed (${status}).`, detail, context ? `[${context}]` : ''].filter(Boolean).join(' '))
     this.name = 'AntigravityServiceError'
   }
 }
-async function checked(response: Response): Promise<Response> {
+async function failureDetail(response: Response): Promise<string> {
+  try {
+    const text = await response.text()
+    return text.replace(/\s+/g, ' ').trim().slice(0, 300)
+  } catch { return '' }
+}
+async function checked(response: Response, context?: string): Promise<Response> {
   if (!response.ok) {
-    await response.body?.cancel().catch(() => {})
-    throw new AntigravityServiceError(response.status, response.headers.get('retry-after'))
+    // The gateway explains failures in the body ("Requested entity was not found."); keep a
+    // bounded copy so a bare status code can still be diagnosed from the UI.
+    const detail = await failureDetail(response)
+    throw new AntigravityServiceError(response.status, response.headers.get('retry-after'), detail, context)
   }
   return response
 }
+const contextOf = (url: string, extra?: string): string => [url.replace(/^https:\/\//, ''), extra].filter(Boolean).join(' · ')
 export class AntigravityClient {
   constructor(private readonly transport: AntigravityTransport) {}
 
@@ -27,7 +44,7 @@ export class AntigravityClient {
     const load = await checked(await this.transport.request({ accountId, signal,
       url: `${ANTIGRAVITY_DISCOVERY_HOST}/v1internal:loadCodeAssist`,
       body: JSON.stringify({ metadata: { ideType: 'ANTIGRAVITY', pluginType: 'GEMINI' } }),
-    }))
+    }), 'v1internal:loadCodeAssist')
     const loaded = object(await load.json())
     signal?.throwIfAborted()
     const rawProject = loaded.cloudaicompanionProject
@@ -35,7 +52,7 @@ export class AntigravityClient {
     if (typeof project !== 'string' || !project.trim()) throw new Error('This account has no Antigravity project. Check service eligibility and required consent in Google; the app cannot accept agreements automatically.')
     const response = await checked(await this.transport.request({ accountId, signal,
       url: `${ANTIGRAVITY_DISCOVERY_HOST}/v1internal:fetchAvailableModels`, body: JSON.stringify({ project }),
-    }))
+    }), 'v1internal:fetchAvailableModels')
     const catalog = object(await response.json())
     signal?.throwIfAborted()
     const rawModels = catalog.models
@@ -75,12 +92,23 @@ export class AntigravityClient {
       else if (/gemini-3/i.test(options.modelId)) generationConfig.thinkingConfig = { includeThoughts: true, thinkingLevel: 'LOW' }
       else if (/gemini-2\.5/i.test(options.modelId) && maxOutputTokens > 1024) generationConfig.thinkingConfig = { includeThoughts: true, thinkingBudget: 1024 }
       const system = [options.systemInstruction, ...options.messages.filter((message) => message.role === 'system').map((message) => message.contentParts.filter((part) => part.type === 'text').map((part) => part.text).join('\n'))].filter(Boolean).join('\n\n')
-      const response = await checked(await this.transport.request({
-        accountId: options.accountId, signal: options.signal, stream: true, url: ANTIGRAVITY_STREAM_URL,
-        body: JSON.stringify({ project: options.project, model: options.modelId, requestType: 'agent', userAgent: 'antigravity', requestId: `agent-${crypto.randomUUID()}`,
-          request: { sessionId: metadata.sessionId, contents, generationConfig, ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}) },
-        }),
-      }))
+      const streamBody = () => JSON.stringify({ project: options.project, model: options.modelId, requestType: 'agent', userAgent: 'antigravity', requestId: `agent-${crypto.randomUUID()}`,
+        request: { sessionId: metadata.sessionId, contents, generationConfig, ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}) },
+      })
+      let response: Response | undefined
+      let failure: unknown
+      for (const url of ANTIGRAVITY_STREAM_URLS) {
+        options.signal?.throwIfAborted()
+        try {
+          // A 404 means this host cannot resolve the entity the catalog named; the other host may.
+          response = await checked(await this.transport.request({ accountId: options.accountId, signal: options.signal, stream: true, url, body: streamBody() }), contextOf(url, `model ${options.modelId}`))
+          break
+        } catch (error) {
+          if (!(error instanceof AntigravityServiceError) || error.status !== 404) throw error
+          failure = error
+        }
+      }
+      if (!response) throw failure ?? new Error('Antigravity request failed')
       if (!response.body) throw new Error('Antigravity returned an empty stream')
       const contentType = response.headers.get('content-type')
       if (contentType && !contentType.toLowerCase().includes('text/event-stream')) {

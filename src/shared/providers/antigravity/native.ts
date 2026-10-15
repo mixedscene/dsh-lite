@@ -60,7 +60,14 @@ export function createNativeAntigravityTransport(plugin: AntigravityNativeHttpPl
     try {
       options.signal?.throwIfAborted()
       const result = await plugin.request({ requestId, accountId: options.accountId, url: options.url, method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: options.stream ? 'text/event-stream' : 'application/json' },
+        headers: {
+          'Content-Type': 'application/json', Accept: options.stream ? 'text/event-stream' : 'application/json',
+          // The gateway documents both as required and gates newer models on the client
+          // version inside User-Agent (an older version answers 404). The native layer
+          // only forwards these allow-listed request headers.
+          'User-Agent': 'antigravity/2.9.1 android/arm64',
+          'X-Goog-Api-Client': 'google-cloud-sdk vscode_cloudshelleditor/0.1',
+        },
         body: options.body, stream: options.stream })
       options.signal?.throwIfAborted()
       if (!stream || result.status < 200 || result.status >= 300) {
