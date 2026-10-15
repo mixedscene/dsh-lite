@@ -43,6 +43,16 @@ jobs:
         run: |
           pnpm run mobile:build:lite
           pnpm exec cap sync android
+          python3 - <<'PYPLUGINS'
+          import json
+          from pathlib import Path
+          expected = {'@capacitor/app', '@capacitor/browser', '@capacitor/keyboard', '@capacitor-community/sqlite', '@capacitor/splash-screen'}
+          plugins = json.loads(Path('android/app/src/main/assets/capacitor.plugins.json').read_text())
+          actual = {plugin['pkg'] for plugin in plugins}
+          if actual != expected:
+              raise SystemExit(f'Unexpected native plugins: {sorted(actual)}')
+          print('Verified five essential Android plugins.')
+          PYPLUGINS
       - name: Install Android platform on cloud runner
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
       - name: Prepare persistent external signing key
