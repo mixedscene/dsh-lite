@@ -89,6 +89,16 @@ const tid = setTimeout(() => {
   }
 }, 1000)
 
+// Never leave the HTML splash above a stalled renderer forever. The renderer
+// can continue initializing underneath it; this only removes the visual cover.
+const splashWatchdog = setTimeout(() => {
+  const splash = document.querySelector<HTMLElement>('.splash-screen')
+  if (!splash) return
+  splash.style.opacity = '0'
+  splash.style.pointerEvents = 'none'
+  splash.style.zIndex = '0'
+}, 8000)
+
 // 等待初始化完成后再渲染
 initializeRenderer()
   .catch((error) => {
@@ -97,6 +107,7 @@ initializeRenderer()
   })
   .finally(async () => {
     clearTimeout(tid)
+    clearTimeout(splashWatchdog)
 
     sessionStartupRecovery.promotePreviousAttempt()
     // 等待settings和onboarding初始化完成，避免闪屏
