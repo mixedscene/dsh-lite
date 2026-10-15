@@ -1,6 +1,6 @@
 import type { LanguageModelUsage, ModelMessage } from 'ai'
 import type { CallChatCompletionOptions, ChatStreamOptions, ModelInterface, ModelStreamPart } from '../../../models/types'
-import type { Message, MessageContentParts, ProviderModelInfo, StreamTextResult } from '../../../types'
+import type { MessageContentParts, ProviderModelInfo, StreamTextResult } from '../../../types'
 import { AntigravityClient } from '../../antigravity/client'
 import { AntigravityMetadataSchema, type AntigravityChatOptions, type AntigravityChatResult, type AntigravityHistoryMessage, type AntigravityUpdate } from '../../antigravity/types'
 
@@ -93,10 +93,13 @@ export default class Antigravity implements ModelInterface {
     // Their input is a quoted transcript, never a synthetic signed conversation.
     const history = this.history(messages)
     const owner = antigravityOwnerFromMessages(history.map((message) => ({ ...message, id: '' })), options.antigravity)
-    const transcript = history.filter((message) => message.role !== 'system').map((message) => {
-      const text = message.contentParts.map((part) => 'text' in part ? part.text : '').join('')
-      return `${message.role}: ${text}`
-    }).join('\n\n')
+    const visibleHistory = history.filter((message) => message.role !== 'system')
+    const transcript = visibleHistory.length === 1 && visibleHistory[0].role === 'user'
+      ? visibleHistory[0].contentParts.map((part) => 'text' in part ? part.text : '').join('')
+      : visibleHistory.map((message) => {
+          const text = message.contentParts.map((part) => 'text' in part ? part.text : '').join('')
+          return `${message.role}: ${text}`
+        }).join('\n\n')
     const prompt: ModelMessage[] = [
       ...messages.filter((message) => message.role === 'system'),
       { role: 'user', content: transcript },

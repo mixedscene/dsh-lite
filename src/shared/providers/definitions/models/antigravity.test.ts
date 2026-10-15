@@ -44,7 +44,7 @@ describe('Antigravity original provider adapter', () => {
     expect(native.request).not.toHaveBeenCalled()
   })
   it('quotes auxiliary history into an independent protocol session with the same account snapshot', async () => {
-    native.request.mockResolvedValue(new Response(`data: ${JSON.stringify({ response: { candidates: [{ content: { parts: [{ text: 'A summary' }] }, finishReason: 'STOP' }] } })}\n\n`))
+    native.request.mockResolvedValue(new Response(`data: ${JSON.stringify({ response: { candidates: [{ content: { parts: [{ text: 'A summary' }] }, finishReason: 'STOP' }] } })}\n\n`, { headers: { 'content-type': 'text/event-stream' } }))
     await model().chat(transcript(), { sessionId: 'local', antigravity: { accountId: 'A', project: 'project-A' } })
     const request = native.request.mock.calls[0][0]
     const body = JSON.parse(request.body!)
