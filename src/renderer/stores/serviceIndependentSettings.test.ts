@@ -50,7 +50,7 @@ describe('getServiceIndependentSettingsPatch', () => {
         webSearch: { provider: 'build-in' },
         documentParser: { type: 'chatbox-ai' },
       },
-      mcp: { enabledBuiltinServers: ['context7'] },
+      mcp: { servers: [], enabledBuiltinServers: ['context7'] },
       favoritedModels: [
         { provider: 'chatbox-ai', model: 'chatboxai-4' },
         { provider: 'openai', model: 'gpt-4o-mini' },
