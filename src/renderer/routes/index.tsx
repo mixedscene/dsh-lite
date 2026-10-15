@@ -1,3 +1,4 @@
+import { featureFlags } from '@/utils/feature-flags'
 import NiceModal from '@ebay/nice-modal-react'
 import { ActionIcon, Avatar, Box, Divider, Flex, ScrollArea, Space, Stack, Text } from '@mantine/core'
 import {
@@ -54,8 +55,8 @@ const scenarioAgentModeOff = {
 } satisfies AgentModeEntry
 
 const firstChatScenarioDefaultModel = {
-  provider: ModelProviderEnum.ChatboxAI,
-  modelId: 'chatboxai-3.5',
+  provider: ModelProviderEnum.OpenAI,
+  modelId: 'gpt-4o-mini',
 } satisfies Pick<SessionSettings, 'provider' | 'modelId'>
 
 export const Route = createFileRoute('/')({
@@ -152,6 +153,7 @@ function Index() {
   useEffect(() => {
     setSession((old) => {
       if (
+        featureFlags.chatboxAI &&
         hasCompletedFirstSuccessfulChat === false &&
         isLoggedIn &&
         !session.copilotId &&

@@ -1,3 +1,4 @@
+import { featureFlags } from '@/utils/feature-flags'
 import { Button, Group, Input, PasswordInput, Pill, Radio, Select, Stack, Text } from '@mantine/core'
 import type { DocumentParserConfig, DocumentParserType } from '@shared/types/settings'
 import { IconCheck, IconTrash, IconX } from '@tabler/icons-react'
@@ -89,6 +90,7 @@ export const KnowledgeBaseChatboxAIInfo: React.FC<KnowledgeBaseChatboxAIInfoProp
 }) => {
   const { t } = useTranslation()
 
+  if (!featureFlags.chatboxAI) return null
   return (
     <Stack gap="sm">
       {showModelsLabel && (
@@ -130,7 +132,7 @@ export const KnowledgeBaseProviderModeSelect: React.FC<KnowledgeBaseProviderMode
       onChange={(value) => onChange(value as 'chatbox-ai' | 'custom')}
     >
       <Group mt="xs">
-        <Radio value="chatbox-ai" label="Chatbox AI" disabled={isChatboxAIDisabled} />
+        {featureFlags.chatboxAI && <Radio value="chatbox-ai" label="Chatbox AI" disabled={isChatboxAIDisabled} />}
         <Radio value="custom" label={t('Custom')} />
       </Group>
     </Radio.Group>
@@ -315,7 +317,7 @@ export const DocumentParserSelector: React.FC<DocumentParserSelectorProps> = ({
       <Select
         label={t('Document Parser')}
         description={t('Parser used to process uploaded documents')}
-        data={PARSER_OPTIONS.map((opt) => ({
+        data={PARSER_OPTIONS.filter((option) => featureFlags.chatboxAI || option.value !== 'chatbox-ai').map((opt) => ({
           value: opt.value,
           label: t(opt.label),
         }))}
@@ -386,7 +388,7 @@ export const DocumentParserDisplay: React.FC<DocumentParserDisplayProps> = ({ pa
     <Select
       label={t('Document Parser')}
       description={t('Parser used to process uploaded documents')}
-      data={PARSER_OPTIONS.map((opt) => ({
+      data={PARSER_OPTIONS.filter((option) => featureFlags.chatboxAI || option.value !== 'chatbox-ai').map((opt) => ({
         value: opt.value,
         label: t(opt.label),
       }))}

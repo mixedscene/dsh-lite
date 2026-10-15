@@ -1,3 +1,4 @@
+import { featureFlags } from '@/utils/feature-flags'
 import { normalizePlausibleUrl, type Plausible } from '@/analytics/plausible'
 import { settingsStore } from '@/stores/settingsStore'
 
@@ -8,7 +9,7 @@ declare global {
 }
 
 export function trackEvent(event: string, props: Record<string, unknown> = {}) {
-  if (typeof window === 'undefined' || !window.plausible) {
+  if (!featureFlags.chatboxAI || typeof window === 'undefined' || !window.plausible) {
     return
   }
   // The Plausible script tag loads unconditionally in index.html, so the opt-out

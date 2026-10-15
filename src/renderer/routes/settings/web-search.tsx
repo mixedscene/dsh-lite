@@ -1,3 +1,4 @@
+import { featureFlags } from '@/utils/feature-flags'
 import { Button, Flex, PasswordInput, Select, Stack, Text, TextInput, Title } from '@mantine/core'
 import { IconCheck, IconX } from '@tabler/icons-react'
 import { createFileRoute } from '@tanstack/react-router'
@@ -161,7 +162,7 @@ export function RouteComponent() {
           ))
         })()}
       </Stack>
-      {extension.webSearch.provider === 'build-in' && (
+      {featureFlags.chatboxAI && extension.webSearch.provider === 'build-in' && (
         <Text size="xs" c="chatbox-gray">
           {t('Chatbox Search is a paid feature with advanced capabilities and better performance.')}
         </Text>
@@ -485,7 +486,7 @@ export function RouteComponent() {
           </Stack>
         </Stack>
       )}
-      {extension.webSearch.provider !== 'build-in' && !licenseKey && (
+      {featureFlags.chatboxAI && extension.webSearch.provider !== 'build-in' && !licenseKey && (
         <Tooltip
           label={t(
             'Note: If you have never had a license before, you can claim it after logging in on the official website. Quota refreshed daily.'

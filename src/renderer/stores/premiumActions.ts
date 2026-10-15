@@ -1,3 +1,4 @@
+import { featureFlags } from '@/utils/feature-flags'
 import omit from 'lodash/omit'
 import { FetchError } from 'ofetch'
 import { useEffect } from 'react'
@@ -73,6 +74,7 @@ export function useAutoValidate(): boolean {
     }))
   }
   useEffect(() => {
+    if (!featureFlags.chatboxAI) return
     void (async () => {
       if (!licenseKey || !licenseInstances) {
         // 这里不清除数据，因为可能是本地数据尚未加载
@@ -109,7 +111,7 @@ export function useAutoValidate(): boolean {
   if (!licenseKey || !licenseInstances) {
     return false
   }
-  return !!licenseInstances[licenseKey]
+  return featureFlags.chatboxAI && !!licenseInstances[licenseKey]
 }
 
 /**

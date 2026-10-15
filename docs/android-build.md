@@ -1,6 +1,6 @@
 # Chatbox Antigravity Android build
 
-The Android host is Capacitor 7, application ID `org.chatbox.antigravity`, minimum Android 8/API 26, target/compile API 35. It loads the lite Chatbox renderer from `release/app/dist/renderer`. The APK contains the renderer and communicates with Google directly through its native plugin; no LAN chat server is required.
+The Android host is Capacitor 7, application ID `org.chatbox.antigravity`, minimum Android 8/API 26, target/compile API 35. It loads the original Chatbox renderer from `release/app/dist/renderer`. The APK contains the renderer and communicates with Google directly through its native plugin; no LAN chat server is required.
 
 ## Source baseline
 
@@ -11,14 +11,14 @@ Based on the GPLv3 public Chatbox source at commit `0ac6385ae1ff5bf778777826da3c
 `.github/workflows/android.yml` runs on the private repository's `chatbox-antigravity` branch or by manual dispatch. The workflow uses Node 22, pnpm 10, JDK 21, Gradle 8.11.1, and Android SDK 35. Install locked JavaScript dependencies with scripts disabled, then run:
 
 ```sh
-pnpm exec vitest run src/shared/providers/antigravity src/renderer/lite
-pnpm exec tsc --project tsconfig.lite.json --noEmit
-pnpm run mobile:build:lite
+pnpm exec vitest run src/shared/providers/antigravity src/shared/providers/definitions/models/antigravity.test.ts src/renderer/native src/renderer/utils/mobile-request.test.ts src/renderer/lite packages/chatbox-core/src/generation
+pnpm run check
+pnpm run mobile:build:original
 pnpm exec cap sync android
 bash android/gradlew -p android testDebugUnitTest assembleDebug assembleRelease lintRelease
 ```
 
-`mobile:build:lite` sets `CHATBOX_LITE=1`, `CHATBOX_BUILD_TARGET=mobile_app`, and `CHATBOX_BUILD_PLATFORM=android`. Capacitor sync creates its normal generated Gradle project references and copies web assets; generated web assets and Cordova plugin projects are ignored. The workflow uploads debug/release APKs, a Git bundle of the source, native unit reports and Android lint reports. Neither a connected device nor installation is part of the build.
+`mobile:build:original` sets `CHATBOX_LITE=0`, `CHATBOX_BUILD_TARGET=mobile_app`, and `CHATBOX_BUILD_PLATFORM=android`. Capacitor sync creates its normal generated Gradle project references and copies web assets; generated web assets and Cordova plugin projects are ignored. The workflow uploads debug/release APKs, a Git bundle of the source, native unit reports and Android lint reports. Neither a connected device nor installation is part of the build.
 
 Provide these existing repository secrets:
 
@@ -83,9 +83,17 @@ Tokens are stored only in native app-private preferences, encrypted by an AES-25
 
 Refreshes serialize per account. An omitted replacement refresh token retains the existing one. A 401 triggers at most one refresh/retry before streaming starts; it does not replay a partially received stream. Repeated 401 or `invalid_grant` marks that account for reauthorization. Network workers are separate from account-control workers so multiple streams do not block switching/removal. Native requests allow only exact Google loadCodeAssist/fetchAvailableModels and streamGenerateContent endpoints over HTTPS, with redirect following disabled. Bearer authorization is supplied natively; JavaScript cannot supply it. Body/cache/response/stream sizes are bounded.
 
+## Original renderer and third-party providers
+
+The distributed Android app loads the original Chatbox router, input, message rendering, settings and conversation database. The earlier experimental lite entry remains in source for reference and is not used by this build. Google account controls are added within the original Antigravity provider settings. Other provider definitions, custom API hosts/paths, API keys, Chat Completions and Responses settings remain available.
+
+Android uses a separate generic native HTTP transport for configured third-party providers. It passes explicit provider headers and request bytes, preserves HTTP status/response headers, streams raw UTF-8 bytes and supports cancellation. HTTP and HTTPS custom endpoints are supported. It never reads the Google credential store. Google requests continue to use the existing separate credential-holding allowlisted plugin. Original Share, Filesystem, Device, Haptics, Toast, AppLauncher, Keyboard, Browser, App, SQLite, SafeArea and SplashScreen plugins are included. A small DocumentSaver bridge implements the already-existing Android export contract.
+
+The proprietary ChatboxAI provider and licensing/subscription, account, cloud sync, cloud parser, remote configuration and analytics entry points are disabled for this distribution. The original Chatbox licensing and copyright notices remain. Google Antigravity has no tools; this provider-specific boundary does not remove the existing capabilities of other configured providers. Sessions bind to their first Google account; switching accounts cannot silently send that conversation under a different owner.
+
 ## Skills
 
-The system document picker imports a user-selected UTF-8 text/Markdown file of at most 256 KiB, validates decoding, strips an optional BOM and rejects binary NUL content. Only the filename and text return to JavaScript; there is no filesystem path, recursive directory access or persisted file grant. The renderer owns Skill preview, enable/disable and persistence. Skills supply conversation instructions. Native requests reject nested tool declarations and function calls/responses; the plugin offers no file or shell execution API.
+The system document picker imports a user-selected UTF-8 text/Markdown file of at most 256 KiB, validates decoding, strips an optional BOM and rejects binary NUL content. Only the filename and text return to JavaScript; there is no filesystem path, recursive directory access or persisted file grant. The native import bridge remains available. The previous lite entry owns its Skill preview, enable/disable and persistence; that extra lite screen is not part of the original-UI build. Existing original Chatbox system-prompt and Skill platform behavior is preserved. Native requests reject nested tool declarations and function calls/responses; the plugin offers no file or shell execution API.
 
 ## Validation limits
 

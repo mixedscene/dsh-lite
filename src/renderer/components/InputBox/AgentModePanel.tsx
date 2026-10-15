@@ -1254,7 +1254,7 @@ const AgentModePanel = forwardRef<AgentModePanelHandle, AgentModePanelProps>(fun
               }
               label={t('Web Search')}
               subtitle={
-                webSearchConfigurationIssue === 'chatbox-ai-sign-in'
+                featureFlags.chatboxAI && webSearchConfigurationIssue === 'chatbox-ai-sign-in'
                   ? (t('Sign in required') ?? undefined)
                   : webSearchConfigurationIssue
                     ? (t('Setup required') ?? undefined)
@@ -1313,7 +1313,7 @@ const AgentModePanel = forwardRef<AgentModePanelHandle, AgentModePanelProps>(fun
                 <IconAlertCircle size={14} color="var(--chatbox-tint-error)" className="mt-0.5 shrink-0" />
                 <Stack gap={3} className="min-w-0">
                   <Text size="xs" c="chatbox-secondary" className="leading-snug">
-                    {webSearchConfigurationIssue === 'chatbox-ai-sign-in'
+                    {featureFlags.chatboxAI && webSearchConfigurationIssue === 'chatbox-ai-sign-in'
                       ? t('Chatbox AI Search needs sign-in. Web Search will be skipped while this setting is on.')
                       : t('The selected Web Search provider needs to be configured before it can run.')}
                   </Text>
@@ -1322,11 +1322,11 @@ const AgentModePanel = forwardRef<AgentModePanelHandle, AgentModePanelProps>(fun
                     onClick={() => {
                       onClose()
                       navigateToSettings(
-                        webSearchConfigurationIssue === 'chatbox-ai-sign-in' ? undefined : '/web-search'
+                        featureFlags.chatboxAI && webSearchConfigurationIssue === 'chatbox-ai-sign-in' ? undefined : '/web-search'
                       )
                     }}
                   >
-                    {webSearchConfigurationIssue === 'chatbox-ai-sign-in'
+                    {featureFlags.chatboxAI && webSearchConfigurationIssue === 'chatbox-ai-sign-in'
                       ? t('Sign in to Chatbox AI')
                       : t('Open Web Search settings')}{' '}
                     →

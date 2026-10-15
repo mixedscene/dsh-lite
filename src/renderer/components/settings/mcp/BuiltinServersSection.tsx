@@ -1,3 +1,4 @@
+import { featureFlags } from '@/utils/feature-flags'
 import { Flex, Paper, SimpleGrid, Switch, Text } from '@mantine/core'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -37,6 +38,7 @@ export const BuiltinServersSection: FC = () => {
   const mcp = useMcpSettings()
   const isPremium = useAutoValidate()
   const onEnabledChange = useToggleMCPServer()
+  if (!featureFlags.chatboxAI) return null
   return (
     <>
       <Text size="sm" fw={600} mb={4}>

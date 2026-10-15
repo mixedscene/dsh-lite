@@ -1,3 +1,4 @@
+import { featureFlags } from '@/utils/feature-flags'
 import { isUsingOAuth, mergeSharedOAuthProviderSettings } from '@shared/oauth'
 import { ModelProviderEnum } from '@shared/types'
 import { getDefaultStore } from 'jotai'
@@ -10,13 +11,13 @@ export function needEditSetting() {
   const settings = settingsStore.getState()
 
   // 激活了chatbox ai
-  if (settings.licenseKey) {
+  if (featureFlags.chatboxAI && settings.licenseKey) {
     return false
   }
 
   if (settings.providers && Object.keys(settings.providers).length > 0) {
     const providers = settings.providers
-    const keys = Object.keys(settings.providers)
+    const keys = Object.keys(settings.providers).filter((key) => featureFlags.chatboxAI || key !== ModelProviderEnum.ChatboxAI)
     // 有任何一个供应商配置了api key 或者 OAuth
     if (
       keys.filter((key) => {
@@ -55,7 +56,7 @@ export function getProxy() {
 }
 
 export function getLicenseKey() {
-  return settingsStore.getState().licenseKey
+  return featureFlags.chatboxAI ? settingsStore.getState().licenseKey : undefined
 }
 
 export function getLicenseDetail() {
@@ -68,7 +69,7 @@ export function isPaid() {
 
 export function isPro() {
   const settings = settingsStore.getState()
-  return !!settings.licenseKey && isChatboxAIProPlan(settings.licenseDetail, settings.licensePlanName)
+  return featureFlags.chatboxAI && !!settings.licenseKey && isChatboxAIProPlan(settings.licenseDetail, settings.licensePlanName)
 }
 
 export function getRemoteConfig() {

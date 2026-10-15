@@ -23,3 +23,6 @@
 # Capacitor invokes annotated plugin methods and picker callbacks by reflection.
 -keep class org.chatbox.antigravity.AntigravityPlugin { *; }
 -keep class org.chatbox.antigravity.OAuthService { *; }
+
+-keep class org.chatbox.antigravity.HttpTransportPlugin { *; }
+-keep class org.chatbox.antigravity.DocumentSaverPlugin { *; }

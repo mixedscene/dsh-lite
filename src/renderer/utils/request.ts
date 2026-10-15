@@ -1,3 +1,4 @@
+import { featureFlags } from '@/utils/feature-flags'
 import platform from '@/platform'
 import { ApiError, BaseError, NetworkError } from '../../shared/models/errors'
 import { isLocalHost } from '../../shared/utils/network_utils'
@@ -44,7 +45,7 @@ function buildHeaders(options: RequestOptions, url: string): Headers {
   const headers = new Headers(options.headers)
   headers.set('Content-Type', 'application/json')
 
-  if (options.useProxy && !isLocalHost(url) && platform.type !== 'mobile' && platform.type !== 'desktop') {
+  if (featureFlags.chatboxAI && options.useProxy && !isLocalHost(url) && platform.type !== 'mobile' && platform.type !== 'desktop') {
     headers.set('CHATBOX-TARGET-URI', url)
     headers.set('CHATBOX-PLATFORM', platform.type)
   }
@@ -57,7 +58,7 @@ async function doRequest(url: string, options: RequestOptions): Promise<Response
   let requestUrl = url
   const headers = buildHeaders(options, url)
 
-  if (useProxy && !isLocalHost(url) && platform.type !== 'mobile' && platform.type !== 'desktop') {
+  if (featureFlags.chatboxAI && useProxy && !isLocalHost(url) && platform.type !== 'mobile' && platform.type !== 'desktop') {
     const version = await platform.getVersion()
     headers.set('CHATBOX-VERSION', version || 'unknown')
     requestUrl = 'https://cors-proxy.chatboxai.app/proxy-api/completions'
@@ -75,7 +76,7 @@ async function doRequest(url: string, options: RequestOptions): Promise<Response
 
     if (!res.ok) {
       const err = await res.text().catch(() => null)
-      throw new ApiError(`Status Code ${res.status}`, err ?? undefined)
+      throw new ApiError(`Status Code ${res.status}`, err ?? undefined, res.status)
     }
     return res
   }

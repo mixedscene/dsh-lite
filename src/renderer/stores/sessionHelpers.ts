@@ -1,3 +1,4 @@
+import { featureFlags } from '@/utils/feature-flags'
 import {
   type AttachmentAnalysis,
   type AttachmentPreparationOptions,
@@ -261,7 +262,9 @@ export function computePreviewMetadata(
 
 function getEffectiveDocumentParserConfig(): DocumentParserConfig {
   const globalConfig = settingsStore.getState().extension?.documentParser
-  return globalConfig ?? getPlatformDefaultDocumentParser()
+  return !featureFlags.chatboxAI && globalConfig?.type === 'chatbox-ai'
+    ? getPlatformDefaultDocumentParser()
+    : globalConfig ?? getPlatformDefaultDocumentParser()
 }
 
 function hasParsedText(content: string): boolean {
@@ -274,11 +277,11 @@ type LocalParserFallbackOptions = {
 }
 
 function canFallbackToChatboxAI(): boolean {
-  return Boolean(settingActions.getLicenseKey())
+  return featureFlags.chatboxAI && Boolean(settingActions.getLicenseKey())
 }
 
 function isChatboxAIFallbackAllowed(options: LocalParserFallbackOptions): boolean {
-  return Boolean(options.forceChatboxAIFallback) || options.allowChatboxAIFallback !== false
+  return featureFlags.chatboxAI && (Boolean(options.forceChatboxAIFallback) || options.allowChatboxAIFallback !== false)
 }
 
 function requireChatboxAIParserLicense(): never {
@@ -287,7 +290,7 @@ function requireChatboxAIParserLicense(): never {
 
 function hasUsableSessionAttachmentRagLicense(): boolean {
   const settings = settingsStore.getState()
-  if (!settings.licenseKey) {
+  if (!featureFlags.chatboxAI || !settings.licenseKey) {
     return false
   }
   if (settings.licenseActivationMethod === 'login') {
@@ -459,6 +462,7 @@ async function parseFileWithLocalFallback(
  * Parse file using Chatbox AI cloud service
  */
 async function parseFileWithChatboxAI(file: File): Promise<ParsedAttachmentContent> {
+  if (!featureFlags.chatboxAI) return parseFileWithLocalParser(file)
   const licenseKey = settingActions.getLicenseKey()
   if (!licenseKey) {
     requireChatboxAIParserLicense()
@@ -750,7 +754,7 @@ export async function preprocessLink(
   error?: string
 }> {
   try {
-    const isPro = settingActions.isPro()
+    const isPro = featureFlags.chatboxAI && settingActions.isPro()
     const uniqKey = StorageKeyGenerator.linkUniqKey(url)
 
     // 检查是否已经处理过这个链接
@@ -960,12 +964,12 @@ export function mergeSettings(
 export function initEmptyChatSession(): Omit<Session, 'id'> {
   const settings = settingsStore.getState().getSettings()
   const { chat: lastUsedChatModel } = lastUsedModelStore.getState()
-  const defaultChatModel = settings.defaultChatModel
+  const defaultChatModel = settings.defaultChatModel && (featureFlags.chatboxAI || settings.defaultChatModel.provider !== 'chatbox-ai')
     ? {
         provider: settings.defaultChatModel.provider,
         modelId: settings.defaultChatModel.model,
       }
-    : lastUsedChatModel || resolveChatboxLicenseDefaultModel(settings)
+    : (lastUsedChatModel && (featureFlags.chatboxAI || lastUsedChatModel.provider !== 'chatbox-ai') ? lastUsedChatModel : undefined) || resolveChatboxLicenseDefaultModel(settings) || { provider: defaults.chatSessionSettings().provider, modelId: defaults.chatSessionSettings().modelId }
   const newSession: Omit<Session, 'id'> = {
     name: 'Untitled',
     type: 'chat',

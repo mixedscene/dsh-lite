@@ -30,7 +30,7 @@ function getTranslatedErrorMessage(
 ): string | undefined {
   if (!errorCode) return undefined
   if (isSessionAttachmentRagAuthError(errorCode)) {
-    return t('This large file needs Chatbox AI to finish indexing. Sign in to Chatbox AI, then retry this file.')
+    return t('This attachment cannot be indexed with the current configuration. Please use a configured knowledge base or upload a smaller attachment instead.')
   }
   if (isSessionAttachmentRagIndexingError(errorCode)) {
     return recoveryAction
@@ -66,7 +66,7 @@ function getErrorStatusLabel(errorCode: string | undefined, t: (key: string) => 
     return t('Too large')
   }
   if (isSessionAttachmentRagAuthError(errorCode)) {
-    return t('Sign in needed')
+    return t('Configuration needed')
   }
   if (errorCode === SESSION_ATTACHMENT_RAG_REQUIRES_TOOL_USE_MODEL_ERROR) {
     return t('Switch model')
@@ -75,7 +75,7 @@ function getErrorStatusLabel(errorCode: string | undefined, t: (key: string) => 
     return t('Indexing failed')
   }
   if (errorCode === CHATBOX_AI_PARSER_LICENSE_KEY_REQUIRED_ERROR) {
-    return t('Sign in needed')
+    return t('Configuration needed')
   }
   if (errorCode === 'license_key_required') {
     return t('License needed')

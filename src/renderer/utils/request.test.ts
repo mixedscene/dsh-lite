@@ -70,6 +70,7 @@ describe('provider API request routing', () => {
     await expect(request).rejects.toMatchObject({
       message: 'API Error: Status Code 503',
       responseBody: 'upstream unavailable',
+      statusCode: 503,
     })
   })
 

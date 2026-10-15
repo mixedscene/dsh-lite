@@ -170,7 +170,7 @@ export function SettingsRoot() {
             isSmallScreen ? 'w-full border-r-0' : 'flex-[1_0_auto]'
           )}
         >
-          {ITEMS.map((item) => (
+          {ITEMS.filter((item) => featureFlags.chatboxAI || item.key !== 'chatbox-ai').map((item) => (
             <Link
               disabled={
                 routerState.location.pathname === `/settings/${item.key}` ||

@@ -1,3 +1,7 @@
+import { getProviderModelsFromRegistry } from './model-registry/enrich'
+import { featureFlags } from '@/utils/feature-flags'
+import { SystemProviders } from '@shared/defaults'
+import { ModelProviderEnum } from '@shared/types'
 import { ofetch } from 'ofetch'
 import { z } from 'zod'
 import { getLogger } from '@/lib/utils'
@@ -31,6 +35,10 @@ import { getOS } from './navigator'
 
 const log = getLogger('remote-api')
 
+function requireChatboxService() {
+  if (!featureFlags.chatboxAI) throw new Error('This service is unavailable. Configure a model provider in Settings.')
+}
+
 let _afetch: ReturnType<typeof createAfetch> | null = null
 let afetchPromise: Promise<ReturnType<typeof createAfetch>> | null = null
 
@@ -51,6 +59,7 @@ async function initAfetch(): Promise<ReturnType<typeof createAfetch>> {
 }
 
 async function getAfetch() {
+  requireChatboxService()
   if (!_afetch) {
     return await initAfetch()
   }
@@ -93,6 +102,7 @@ async function initAuthenticatedAfetch(): Promise<ReturnType<typeof createAuthen
 }
 
 async function getAuthenticatedAfetch() {
+  requireChatboxService()
   if (!_authenticatedAfetch) {
     return await initAuthenticatedAfetch()
   }
@@ -133,6 +143,7 @@ const getChatboxHeaders = async () => {
 // ========== 各个接口方法 ==========
 
 export async function checkNeedUpdate(version: string, os: string, config: Config, settings: Settings) {
+  if (!featureFlags.chatboxAI) return false
   type Response = {
     need_update?: boolean
   }
@@ -172,6 +183,7 @@ export async function checkNeedUpdate(version: string, os: string, config: Confi
 // }
 
 export async function listCopilotTags(lang: string) {
+  if (!featureFlags.chatboxAI) return [] as string[]
   type Response = {
     data: string[]
   }
@@ -191,6 +203,7 @@ export async function listCopilotsByCursor(
     search?: string
   }
 ) {
+  if (!featureFlags.chatboxAI) return { data: [] as CopilotDetail[], next_cursor: null }
   type Response = {
     data: CopilotDetail[]
     next_cursor: string | null
@@ -207,6 +220,7 @@ export async function recordCopilotUsage(params: {
   id: string
   action: 'create_session' | 'create_thread' | 'create_message' | 'use_copilot'
 }) {
+  if (!featureFlags.chatboxAI) return
   await ofetch(`${getAPIOrigin()}/api/system_copilots/record_usage`, {
     method: 'POST',
     body: {
@@ -217,6 +231,7 @@ export async function recordCopilotUsage(params: {
 }
 
 export async function recordCopilotShare(detail: CopilotDetail) {
+  if (!featureFlags.chatboxAI) return
   await ofetch(`${getAPIOrigin()}/api/copilots/share-record`, {
     method: 'POST',
     body: {
@@ -226,6 +241,7 @@ export async function recordCopilotShare(detail: CopilotDetail) {
 }
 
 export async function getPremiumPrice() {
+  requireChatboxService()
   type Response = {
     data: {
       price: number
@@ -240,6 +256,14 @@ export async function getPremiumPrice() {
 }
 
 export async function getRemoteConfig(config: keyof RemoteConfig) {
+  if (!featureFlags.chatboxAI) {
+    const defaults: RemoteConfig = {
+      setting_chatboxai_first: false,
+      current_version: await platform.getVersion(),
+      product_ids: [],
+    }
+    return defaults
+  }
   type Response = {
     data: Pick<RemoteConfig, typeof config>
   }
@@ -269,6 +293,12 @@ const SESSION_RAG_CONFIG_CACHE_TTL_MS = 10 * 60 * 1000
 const sessionRagConfigCache = new Map<string, SessionRagConfigCacheEntry>()
 
 export async function getSessionRagConfig(params?: { licenseKey?: string }) {
+  if (!featureFlags.chatboxAI) {
+    return {
+      models: { embedding: '', rerank: '' },
+      capabilities: { session_attachment_embedding: false, session_attachment_rerank: false },
+    } satisfies SessionRagConfig
+  }
   type Response = {
     data: SessionRagConfig
   }
@@ -327,6 +357,7 @@ export interface DialogConfig {
 }
 
 export async function getDialogConfig(params: { uuid: string; language: string; version: string }) {
+  if (!featureFlags.chatboxAI) return null
   type Response = {
     data: null | DialogConfig
   }
@@ -340,6 +371,7 @@ export async function getDialogConfig(params: { uuid: string; language: string; 
 }
 
 export async function getLicenseDetail(params: { licenseKey: string }) {
+  if (!featureFlags.chatboxAI) return null
   type Response = {
     data: ChatboxAILicenseDetail | null
   }
@@ -366,6 +398,7 @@ export interface LicenseDetailResponse {
 }
 
 export async function getLicenseDetailRealtime(params: { licenseKey: string }): Promise<LicenseDetailResponse> {
+  if (!featureFlags.chatboxAI) return { data: null }
   type Response = {
     data: ChatboxAILicenseDetail | null
     error?: LicenseDetailError
@@ -605,6 +638,25 @@ const ModelManifestResponseSchema = z.object({
 })
 
 export async function getModelManifest(params: { aiProvider: ModelProvider; licenseKey?: string; language?: string }) {
+  if (!featureFlags.chatboxAI) {
+    const provider = SystemProviders().find((item) => item.id === params.aiProvider)
+    const localModels = new Map([
+      ...getProviderModelsFromRegistry(params.aiProvider),
+      ...(provider?.defaultSettings?.models || []),
+    ].map((model) => [model.modelId, model]))
+    const models: RemoteModelInfo[] = [...localModels.values()].map((model) => ({
+      ...model, modelName: model.nickname || model.modelId,
+    }))
+    // Keep image creation available without the proprietary catalog endpoint.
+    const imageIds = params.aiProvider === ModelProviderEnum.OpenAI
+      ? ['gpt-image-1', 'gpt-image-1.5', 'gpt-image-2', 'dall-e-3']
+      : params.aiProvider === ModelProviderEnum.Gemini
+        ? ['gemini-2.5-flash-image', 'gemini-3-pro-image-preview', 'gemini-3.1-flash-image-preview']
+        : []
+    const imageModels = new Map<string, RemoteModelInfo>(imageIds.map((modelId) => [modelId, { modelId, modelName: modelId, type: 'image' }]))
+    models.filter((model) => model.type === 'image').forEach((model) => imageModels.set(model.modelId, model))
+    return { groupName: provider?.name || params.aiProvider, models, imageModels: [...imageModels.values()] }
+  }
   const afetch = await getAfetch()
   const res = await afetch(
     `${getAPIOrigin()}/api/model_manifest`,
@@ -701,6 +753,9 @@ const ChatboxAIModelListResponseSchema = z.object({
 export type ChatboxAIModelList = z.infer<typeof ChatboxAIModelListResponseSchema>['data']
 
 export async function getChatboxAIModelList(params: { licenseKey?: string; language?: string }) {
+  if (!featureFlags.chatboxAI) {
+    return { provider: { id: ModelProviderEnum.ChatboxAI, name: '' }, license: { plan: 'unknown' }, groups: [], models: {}, imageModels: [] } satisfies ChatboxAIModelList
+  }
   const afetch = await getAfetch()
   const res = await afetch(
     `${getAPIOrigin()}/api/chatbox_ai/model_list`,
@@ -744,6 +799,7 @@ const ProviderInfoResponseSchema = z.object({
 })
 
 export async function getProviderModelsInfo(params: { modelIds: string[] }) {
+  if (!featureFlags.chatboxAI) return {} as z.infer<typeof ProviderInfoResponseSchema>['data']
   const afetch = await getAfetch()
   const res = await afetch(
     `${getAPIOrigin()}/api/provider_models_info`,
@@ -1072,6 +1128,7 @@ export interface UserLicense {
 }
 
 export async function listLicensesByUser(): Promise<UserLicense[]> {
+  if (!featureFlags.chatboxAI) return []
   type Response = {
     data: UserLicense[]
   }

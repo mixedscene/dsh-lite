@@ -1,4 +1,4 @@
-name: Android Antigravity
+name: Android Chatbox + Antigravity
 on:
   push:
     branches: [chatbox-antigravity]
@@ -13,7 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      CHATBOX_LITE: '1'
+      CHATBOX_LITE: '0'
+      NODE_OPTIONS: '--max-old-space-size=6144'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,23 +36,23 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Install locked JavaScript dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
-      - name: Validate protocol and Skill behavior
+      - name: Validate providers and original generation behavior
         run: |
-          pnpm exec vitest run src/shared/providers/antigravity src/renderer/lite
-          pnpm exec tsc --project tsconfig.lite.json --noEmit
-      - name: Build lite renderer and sync Capacitor
+          pnpm exec vitest run src/shared/providers/antigravity src/shared/providers/definitions/models/antigravity.test.ts src/renderer/native src/renderer/utils/mobile-request.test.ts src/renderer/utils/request.test.ts src/renderer/stores/serviceIndependentSettings.test.ts src/renderer/lite src/renderer/adapters/CurrentGenerationService.test.ts src/renderer/stores/session/agent-harness.test.ts src/renderer/packages/model-calls/index.test.ts packages/chatbox-core/src/generation packages/chatbox-core/src/application/session/SessionNamingService.test.ts
+          pnpm run check
+      - name: Build original Chatbox renderer and sync Capacitor
         run: |
-          pnpm run mobile:build:lite
+          pnpm run mobile:build:original
           pnpm exec cap sync android
           python3 - <<'PYPLUGINS'
           import json
           from pathlib import Path
-          expected = {'@capacitor/app', '@capacitor/browser', '@capacitor/keyboard', '@capacitor-community/sqlite', '@capacitor/splash-screen'}
+          expected = {'@capacitor/app', '@capacitor/browser', '@capacitor/keyboard', '@capacitor-community/sqlite', '@capacitor/splash-screen', '@capacitor/app-launcher', '@capacitor/device', '@capacitor/filesystem', '@capacitor/haptics', '@capacitor/share', '@capacitor/toast', 'capacitor-plugin-safe-area', 'capacitor-stream-http'}
           plugins = json.loads(Path('android/app/src/main/assets/capacitor.plugins.json').read_text())
           actual = {plugin['pkg'] for plugin in plugins}
           if actual != expected:
               raise SystemExit(f'Unexpected native plugins: {sorted(actual)}')
-          print('Verified five essential Android plugins.')
+          print('Verified native plugins required by the original Chatbox renderer.')
           PYPLUGINS
       - name: Install Android platform on cloud runner
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
@@ -78,7 +79,7 @@ jobs:
           ANTIGRAVITY_OAUTH_CLIENT_ID: ${{ secrets.AGY_CLIENT_ID }}
           ANTIGRAVITY_OAUTH_CLIENT_SECRET: ${{ secrets.AGY_CLIENT_SECRET }}
           ANDROID_VERSION_CODE: ${{ github.run_number }}
-          ANDROID_VERSION_NAME: 0.1.${{ github.run_number }}
+          ANDROID_VERSION_NAME: 0.2.${{ github.run_number }}
         run: bash android/gradlew -p android testDebugUnitTest assembleDebug assembleRelease lintRelease
       - name: Verify APK signing certificate
         run: |

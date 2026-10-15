@@ -2,9 +2,41 @@ import type { ChatStreamOptions, ModelInterface, ModelStreamPart } from '@shared
 import type { Config, Message, Session, SessionSettings, Settings } from '@shared/types'
 import { jsonSchema, type ModelMessage, type ToolSet } from 'ai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import Antigravity from '@shared/providers/definitions/models/antigravity'
+import type { AntigravityTransport } from '@shared/providers/antigravity/types'
+import { SessionSchema } from '@shared/types'
+import { prepareAntigravityGeneration } from '../../../../src/renderer/adapters/AntigravityGenerationPreparation'
+import { SQLiteStorage } from '../../../../src/renderer/platform/sqlite-storage'
 import { generationStreamFixture } from '../testing/generation-stream'
 import { GenerationService, type GenerationServiceDependencies, type GenerationSessionPort } from './GenerationService'
 import { GenerationRuntimeStore } from './runtime-store'
+
+const antigravityBridge = vi.hoisted(() => ({
+  activeAccountId: 'account-A',
+  request: vi.fn<AntigravityTransport['request']>(),
+  rows: new Map<string, string>(),
+}))
+vi.mock('@shared/providers/antigravity/native', () => ({
+  antigravityNative: {
+    listAccounts: async () => ({ activeAccountId: antigravityBridge.activeAccountId, accounts: [
+      { id: 'account-A', project: 'project-A', reauthRequired: false },
+      { id: 'account-B', project: 'project-B', reauthRequired: false },
+    ] }),
+    updateAccountCache: vi.fn(),
+  },
+  createNativeAntigravityTransport: () => ({ request: antigravityBridge.request }),
+}))
+vi.mock('@capacitor-community/sqlite', () => ({
+  CapacitorSQLite: {},
+  SQLiteConnection: class {
+    async closeConnection() {}
+    async createConnection() { return {
+      open: async () => {}, execute: async () => {},
+      run: async (_sql: string, [key, value]: [string, string]) => { antigravityBridge.rows.set(key, value) },
+      query: async (_sql: string, [key]: [string]) => ({ values: antigravityBridge.rows.has(key) ? [{ value: antigravityBridge.rows.get(key) }] : [] }),
+    } }
+  },
+}))
 
 type ModelContext = { host: 'test' }
 
@@ -72,7 +104,7 @@ interface Harness {
   setNow(value: number): void
 }
 
-function createHarness(): Harness {
+function createHarness(configure?: (dependencies: GenerationServiceDependencies<ModelContext>, session: Session) => void): Harness {
   const session = createSession()
   const sessionSettings = {
     provider: 'openai',
@@ -326,6 +358,7 @@ function createHarness(): Harness {
     },
   }
 
+  configure?.(dependencies, session)
   return {
     service: new GenerationService(dependencies),
     runtime,
@@ -1372,5 +1405,136 @@ describe('GenerationService', () => {
         }),
       ],
     })
+  })
+})
+
+// Real original core service + renderer preparation + provider/client/SSE + SQLite
+// adapter. Only the Google HTTP and Capacitor SQLite bridges are mocked.
+describe('Antigravity original generation integration', () => {
+  const raw = [
+    { text: 'Thinking', thought: true, thoughtSignature: 'signed-thought', future: { retained: [1, 'opaque'] } },
+    { text: 'Answer', futureFlag: true },
+  ]
+  const sse = (finishReason?: string) => new Response(`data: ${JSON.stringify({ response: {
+    candidates: [{ content: { parts: raw }, ...(finishReason ? { finishReason } : {}) }],
+    usageMetadata: { promptTokenCount: 11, candidatesTokenCount: 3, totalTokenCount: 14 },
+  } })}\n\ndata: [DONE]\n\n`, { headers: { 'content-type': 'text/event-stream' } })
+
+  function setup() {
+    antigravityBridge.activeAccountId = 'account-A'
+    antigravityBridge.rows.clear()
+    antigravityBridge.request.mockReset().mockImplementation(async () => sse('STOP'))
+    const storage = new SQLiteStorage()
+    const model = new Antigravity({ model: { modelId: 'claude-test' } })
+    const harness = createHarness((dependencies, session) => {
+      dependencies.models.createContext = async () => ({ model, context: { host: 'test' } })
+      dependencies.preparation.prepare = (request) => prepareAntigravityGeneration(request, async (owner) => {
+        session.antigravity = owner
+      })
+      const persist = dependencies.sessions.persistStreamingMessage
+      dependencies.sessions.persistStreamingMessage = async (...args) => {
+        await persist(...args)
+        await storage.setItem(`session:${session.id}`, JSON.stringify(session))
+      }
+    })
+    harness.sessionSettings.provider = 'antigravity'
+    harness.sessionSettings.modelId = 'claude-test'
+    return { harness, storage, model }
+  }
+
+  function append(harness: Harness, id: string, text = 'Next question') {
+    const target: Message = { id: `assistant-${id}`, role: 'assistant', contentParts: [], generating: true }
+    harness.session.messages.push({ id: `user-${id}`, role: 'user', contentParts: [{ type: 'text', text }] }, target)
+    return target
+  }
+
+  it('persists signed parts through SQLite and replays exact protocol history after reload', async () => {
+    const { harness, storage } = setup()
+    await harness.service.orchestrate(harness.session.id, targetMessage())
+    const saved = SessionSchema.parse(JSON.parse((await storage.getItem(`session:${harness.session.id}`))!))
+    const reply = saved.messages.at(-1)!
+    expect(reply.generating).toBe(false)
+    expect(reply.antigravity).toMatchObject({ complete: true, status: 'completed', accountId: 'account-A', parts: raw })
+    expect(reply.usage).toMatchObject({ inputTokens: 11, outputTokens: 3, totalTokens: 14 })
+    expect(reply.contentParts.filter((part) => part.type === 'text').map((part) => part.text).join('')).toBe('Answer')
+    Object.assign(harness.session, saved)
+    await harness.service.orchestrate(harness.session.id, append(harness, '2'))
+    const sent = JSON.parse(antigravityBridge.request.mock.calls.at(-1)![0].body)
+    expect(sent.request.contents).toEqual([
+      { role: 'user', parts: [{ text: 'Hello' }] }, { role: 'model', parts: raw },
+      { role: 'user', parts: [{ text: 'Next question' }] },
+    ])
+    expect(sent.request).not.toHaveProperty('tools')
+    expect(harness.session.antigravity).toEqual({ accountId: 'account-A', project: 'project-A' })
+  })
+
+  it('blocks an A-owned chat under account B and filters old A history after explicit rebinding', async () => {
+    const { harness } = setup()
+    await harness.service.orchestrate(harness.session.id, targetMessage())
+    antigravityBridge.activeAccountId = 'account-B'
+    const second = append(harness, '2', 'B-only question')
+    await harness.service.orchestrate(harness.session.id, second)
+    expect(antigravityBridge.request).toHaveBeenCalledTimes(1)
+    expect(lastPersisted(harness).error).toContain('belongs to another Google account')
+    harness.session.antigravity = { accountId: 'account-B', project: 'project-B' }
+    await harness.service.orchestrate(harness.session.id, append(harness, '3', 'Fresh B question'))
+    const request = antigravityBridge.request.mock.calls.at(-1)![0]
+    expect(request.accountId).toBe('account-B')
+    expect(JSON.parse(request.body).request.contents).toEqual([{ role: 'user', parts: [{ text: 'Fresh B question' }] }])
+    expect(request.body).not.toContain('signed-thought')
+    expect(request.body).not.toContain('Hello')
+  })
+
+  it('persists incomplete raw parts for recovery and excludes them from the next request', async () => {
+    const { harness, storage } = setup()
+    antigravityBridge.request.mockImplementationOnce(async () => sse())
+    await harness.service.orchestrate(harness.session.id, targetMessage())
+    const saved = SessionSchema.parse(JSON.parse((await storage.getItem(`session:${harness.session.id}`))!))
+    expect(saved.messages.at(-1)!.antigravity).toMatchObject({ complete: false, status: 'failed', parts: raw })
+    Object.assign(harness.session, saved)
+    await harness.service.orchestrate(harness.session.id, append(harness, '2'))
+    expect(JSON.parse(antigravityBridge.request.mock.calls.at(-1)![0].body).request.contents).toEqual([
+      { role: 'user', parts: [{ text: 'Next question' }] },
+    ])
+  })
+
+  it('marks stopped replies incomplete even when signed parts were received', async () => {
+    const { harness, storage } = setup()
+    let partialSeen!: () => void
+    const seen = new Promise<void>((resolve) => { partialSeen = resolve })
+    antigravityBridge.request.mockImplementationOnce(async (options) => {
+      const encoder = new TextEncoder()
+      return new Response(new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ response: { candidates: [{ content: { parts: raw } }] } })}\n\n`))
+          options.signal?.addEventListener('abort', () => controller.error(new DOMException('Stopped', 'AbortError')), { once: true })
+        },
+      }), { headers: { 'content-type': 'text/event-stream' } })
+    })
+    const originalCache = harness.cached.push.bind(harness.cached)
+    harness.cached.push = (...messages) => {
+      if (messages.some((message) => message.antigravity?.parts.length)) partialSeen()
+      return originalCache(...messages)
+    }
+    const run = harness.service.orchestrate(harness.session.id, targetMessage())
+    await seen
+    harness.runtime.get(harness.session.id)!.abortController.abort()
+    await run
+    const saved = SessionSchema.parse(JSON.parse((await storage.getItem(`session:${harness.session.id}`))!))
+    expect(saved.messages.at(-1)!.antigravity).toMatchObject({ complete: false, status: 'cancelled', parts: raw })
+    expect(saved.messages.at(-1)!.generating).toBe(false)
+    await harness.service.orchestrate(harness.session.id, append(harness, '2'))
+    expect(JSON.parse(antigravityBridge.request.mock.calls.at(-1)![0].body).request.contents).toEqual([
+      { role: 'user', parts: [{ text: 'Next question' }] },
+    ])
+  })
+
+  it('supports independent nonstream capability probes without a Chatbox session id', async () => {
+    const { model } = setup()
+    const result = await model.chat([{ role: 'user', content: 'Reply OK' }], {})
+    expect(result.antigravity.complete).toBe(true)
+    const sent = JSON.parse(antigravityBridge.request.mock.calls.at(-1)![0].body)
+    expect(sent.request.sessionId).toContain('aux-')
+    expect(sent.request.contents).toEqual([{ role: 'user', parts: [{ text: 'Reply OK' }] }])
   })
 })

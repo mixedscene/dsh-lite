@@ -1,4 +1,5 @@
-import { CapacitorHttp } from '@capacitor/core'
+import { Capacitor, CapacitorHttp } from '@capacitor/core'
+import { nativeHttpRequest } from '@/native/http-transport'
 import { createNativeReadableStream } from '@/native/stream-http'
 import { ApiError } from '../../shared/models/errors'
 
@@ -9,12 +10,19 @@ export async function handleMobileRequest(
   body?: RequestInit['body'],
   signal?: AbortSignal
 ): Promise<Response> {
+  // Android streams raw bytes and returns upstream status/headers before body consumption.
+  // The Google account bridge remains a separate, allowlisted transport.
+  if (Capacitor.getPlatform() === 'android') return nativeHttpRequest(url, method, headers, body, signal)
+
   // Fix: Convert Headers to plain object without using .entries()
   const headerObj: Record<string, string> = {}
   headers.forEach((value, key) => {
     headerObj[key] = value
   })
-  const isStreaming = body && typeof body === 'string' && JSON.parse(body).stream === true
+  let isStreaming = false
+  if (typeof body === 'string') {
+    try { isStreaming = JSON.parse(body)?.stream === true } catch { /* Non-JSON bodies use the ordinary native request. */ }
+  }
 
   if (isStreaming) {
     try {

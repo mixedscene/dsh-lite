@@ -1,3 +1,4 @@
+import { featureFlags } from '@/utils/feature-flags'
 import { GOOGLE_ANALYTICS_APP_OPEN_EVENT, GOOGLE_ANALYTICS_MEASUREMENT_ID } from '@shared/analytics'
 import platform from '@/platform'
 import { initSettingsStore, settingsStore } from '@/stores/settingsStore'
@@ -111,6 +112,7 @@ async function initializeGoogleAnalyticsTracking(): Promise<void> {
 }
 
 export function initGoogleAnalyticsTracking(): Promise<void> {
+  if (!featureFlags.chatboxAI) return Promise.resolve()
   initializationPromise ??= initializeGoogleAnalyticsTracking().catch((e) => {
     disableGoogleAnalytics()
     console.error('Failed to initialize Google Analytics tracking:', e)

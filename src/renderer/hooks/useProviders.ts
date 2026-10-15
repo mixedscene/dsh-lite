@@ -1,3 +1,4 @@
+import { featureFlags } from '@/utils/feature-flags'
 import { SystemProviders } from '@shared/defaults'
 import { isUsingOAuth, mergeSharedOAuthProviderSettings } from '@shared/oauth'
 import { ModelProviderEnum, type ProviderInfo } from '@shared/types'
@@ -21,6 +22,7 @@ export const useProviders = () => {
   const providers = useMemo(
     () =>
       allProviderBaseInfos
+        .filter((p) => featureFlags.chatboxAI || p.id !== ModelProviderEnum.ChatboxAI)
         .map((p) => {
           const providerSettings = mergeSharedOAuthProviderSettings(p.id, providerSettingsMap)
           if (p.id === ModelProviderEnum.ChatboxAI && licenseKey) {

@@ -22,6 +22,8 @@ export type ModelImageResolver = (storageKey: string) => Promise<string | null>
 
 export interface ConvertToModelMessagesOptions {
   modelSupportVision: boolean
+  /** Preserve complete Antigravity messages without splitting signed protocol turns. */
+  preserveAntigravity?: boolean
   /**
    * Whether historical assistant reasoning survives conversion.
    * - `false`/omitted: reasoning is dropped (most providers reject or mangle it).
@@ -500,6 +502,13 @@ export async function convertToModelMessages(
   resolveImage: ModelImageResolver,
   options?: ConvertToModelMessagesOptions
 ): Promise<ModelMessage[]> {
+  if (options?.preserveAntigravity) {
+    return messages.filter((message) => message.role !== 'tool').map((message): ModelMessage => ({
+      role: message.role as 'user' | 'assistant' | 'system',
+      content: getMessageText(message),
+      ...(message.antigravity ? { providerOptions: { antigravity: JSON.parse(JSON.stringify(message.antigravity)) } } : {}),
+    }))
+  }
   const output: ModelMessage[] = []
   const effectiveReasoningReplay: EffectiveReasoningReplay = !options?.preserveReasoning
     ? false

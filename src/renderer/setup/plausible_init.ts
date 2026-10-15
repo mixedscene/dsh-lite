@@ -1,3 +1,4 @@
+import { featureFlags } from '@/utils/feature-flags'
 import {
   normalizePlausibleUrl,
   normalizePlausibleVersion,
@@ -10,6 +11,7 @@ import { initSettingsStore, settingsStore } from '../stores/settingsStore'
 export type PlausibleNavigationSubscriber = (onResolved: (hrefChanged: boolean) => void) => void
 
 export async function initPlausibleTracking(subscribeToNavigation?: PlausibleNavigationSubscriber): Promise<void> {
+  if (!featureFlags.chatboxAI) return
   try {
     const settings = await initSettingsStore()
     const version = normalizePlausibleVersion(await platform.getVersion().catch(() => 'unknown'))

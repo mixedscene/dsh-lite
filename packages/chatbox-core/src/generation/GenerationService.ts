@@ -319,6 +319,7 @@ export class GenerationService<TContext> {
         generating: false,
         status: [],
         finishReason: 'canceled',
+        ...(targetMessage.antigravity ? { antigravity: { ...targetMessage.antigravity, complete: false, status: 'cancelled' as const } } : {}),
       }
       if (persist) {
         await sessions.persistStreamingMessage(sessionId, targetMessage, { refreshCounting: true })
@@ -351,6 +352,8 @@ export class GenerationService<TContext> {
         globalSettings,
         session.type
       )
+      // A regenerated/replaced reply must never keep a previous signed response.
+      if (targetMessage.antigravity) targetMessage = { ...targetMessage, antigravity: undefined }
       if (controller.signal.aborted) return finishCanceledSetup(true)
 
       await sessions.persistStreamingMessage(sessionId, targetMessage)
@@ -417,6 +420,9 @@ export class GenerationService<TContext> {
         [...infoParts, ...processorState.contentParts],
         getAbortStoppedAt(controller.signal, host.now())
       )
+      if (processorState.antigravity) {
+        targetMessage = { ...targetMessage, antigravity: { ...processorState.antigravity, complete: false, status: 'cancelled' } }
+      }
       await sessions.persistStreamingMessage(sessionId, targetMessage, { refreshCounting: true })
       return true
     }
@@ -732,6 +738,7 @@ export class GenerationService<TContext> {
           const nextMessage: Message = {
             ...targetMessage,
             contentParts: [...infoParts, ...processorState.contentParts],
+            ...(processorState.antigravity ? { antigravity: processorState.antigravity } : {}),
           }
           const textLength = getMessageText(nextMessage, true, true).length
           if (!firstTokenLatency && textLength > 0) {
@@ -849,6 +856,9 @@ export class GenerationService<TContext> {
 
       if (await persistAbortedGenerationIfNeeded()) return
 
+      if (processorState.antigravity) {
+        targetMessage = { ...targetMessage, antigravity: { ...processorState.antigravity, complete: false, status: 'failed' } }
+      }
       targetMessage = sessions.handleGenerationError(error, targetMessage, settings, {
         agentMode: host.getAgentModeEntry(sessionId, session).value,
         operationType: options?.operationType,

@@ -1,3 +1,4 @@
+import { featureFlags } from '@/utils/feature-flags'
 import { ModelProviderEnum, type ProviderModelInfo } from '@shared/types'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
@@ -43,6 +44,7 @@ const useChatboxAIModels = () => {
 
   const { data, ...others } = useQuery({
     queryKey: ['chatbox-ai-models', language, licenseKey],
+    enabled: featureFlags.chatboxAI,
     queryFn: async () => {
       const [manifest, modelList] = await Promise.all([
         getModelManifest({
@@ -79,13 +81,13 @@ const useChatboxAIModels = () => {
   })
 
   const allChatboxAIModels = useMemo(
-    () => data?.models || chatboxAISettings?.models || [],
+    () => (featureFlags.chatboxAI ? data?.models || chatboxAISettings?.models || [] : []),
     [data, chatboxAISettings?.models]
   )
 
   const chatboxAIImageModels = useMemo(
     () =>
-      data?.imageModels.map(
+      (featureFlags.chatboxAI ? data?.imageModels : undefined)?.map(
         (item) =>
           ({
             modelId: item.modelId,
@@ -108,7 +110,7 @@ const useChatboxAIModels = () => {
     allChatboxAIModels,
     chatboxAIModels,
     chatboxAIImageModels,
-    chatboxAIModelList: data?.modelList || null,
+    chatboxAIModelList: featureFlags.chatboxAI ? data?.modelList || null : null,
     ...others,
   }
 }

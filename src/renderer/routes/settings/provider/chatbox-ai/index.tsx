@@ -1,10 +1,11 @@
+import { featureFlags } from '@/utils/feature-flags'
 /**
  * 该文件已废弃（采用了新的配置入口），请使用 `src/renderer/routes/settings/chatbox-ai.tsx` 文件代替
  */
 
 import { Stack, Transition } from '@mantine/core'
 import { type ModelProvider, ModelProviderEnum } from '@shared/types'
-import { createFileRoute } from '@tanstack/react-router'
+import { Navigate, createFileRoute } from '@tanstack/react-router'
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import useChatboxAIModels from '@/hooks/useChatboxAIModels'
 import { useLanguage, useProviderSettings, useSettingsStore } from '@/stores/settingsStore'
@@ -22,6 +23,11 @@ export const Route = createFileRoute('/settings/provider/chatbox-ai/')({
 })
 
 export function RouteComponent() {
+  if (!featureFlags.chatboxAI) return <Navigate to="/settings/provider" replace />
+  return <LegacyRouteComponent />
+}
+
+function LegacyRouteComponent() {
   const language = useLanguage()
   const providerId: ModelProvider = ModelProviderEnum.ChatboxAI
   const { providerSettings, setProviderSettings } = useProviderSettings(providerId)

@@ -1,3 +1,4 @@
+import { antigravityOwnerFromMessages } from '@shared/providers/definitions/models/antigravity'
 import { isExpectedGenerationError } from '@shared/models/error-classification'
 import type { Language, Message, ModelProvider, SessionSettings, Settings } from '@shared/types'
 import { createModel } from '@/adapters'
@@ -39,7 +40,9 @@ export async function generateSummary(options: SummaryGeneratorOptions): Promise
     const model = await createModel(settings)
 
     const promptMessages = promptFormat.summarizeConversation(messages, languageName, options.prompt)
-    const result = await generateText(model, promptMessages)
+    const result = await generateText(model, promptMessages, model.name === 'Antigravity'
+      ? { antigravity: antigravityOwnerFromMessages(messages) }
+      : {})
 
     const summary =
       result.contentParts

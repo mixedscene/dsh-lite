@@ -36,6 +36,7 @@ export interface StreamProcessorState {
   currentTextPart: MessageTextPart | undefined
   currentReasoningPart: MessageReasoningPart | undefined
   preparingToolInput: PreparingToolInputState | undefined
+  antigravity?: Message['antigravity']
   usage: Message['usage']
   finishReason: string | undefined
   /**
@@ -113,10 +114,11 @@ export async function processStreamChunk(
   clearStatus?: boolean
 }> {
   const { contentParts } = state
-  let { currentTextPart, currentReasoningPart, preparingToolInput, usage, finishReason, stepIndex } = state
+  let { currentTextPart, currentReasoningPart, preparingToolInput, usage, finishReason, stepIndex, antigravity } = state
   let { pendingReasoningText } = state
 
   const nextState = (): StreamProcessorState => ({
+    antigravity,
     contentParts,
     currentTextPart,
     currentReasoningPart,
@@ -130,11 +132,15 @@ export async function processStreamChunk(
   // Buffered whitespace belongs to a reasoning block still in progress; any
   // chunk other than that block's own deltas/end (or a side-channel status)
   // means the block yielded nothing and the buffer is stale.
-  if (chunk.type !== 'reasoning-delta' && chunk.type !== 'reasoning-end' && chunk.type !== 'status') {
+  if (chunk.type !== 'reasoning-delta' && chunk.type !== 'reasoning-end' && chunk.type !== 'status' && chunk.type !== 'antigravity-metadata') {
     pendingReasoningText = ''
   }
 
   switch (chunk.type) {
+    case 'antigravity-metadata':
+      antigravity = structuredClone(chunk.antigravity)
+      return { state: nextState(), skipUpdate: false }
+
     case 'text-delta': {
       finalizeReasoningDuration(currentReasoningPart)
       currentReasoningPart = undefined

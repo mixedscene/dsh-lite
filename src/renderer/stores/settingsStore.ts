@@ -1,4 +1,5 @@
-import { getDefaultDocumentParser } from '@chatbox/core/domain/settings'
+import { featureFlags } from '@/utils/feature-flags'
+import { getServiceIndependentSettingsPatch } from './serviceIndependentSettings'
 import {
   type SettingsStoreState,
   selectLanguage,
@@ -20,7 +21,7 @@ export { settingsService, settingsStore }
  * Returns the same host-specific parser default used by Settings migrations.
  */
 export function getPlatformDefaultDocumentParser(): DocumentParserConfig {
-  return getDefaultDocumentParser({ isDesktopLike: platform.isDesktopLike })
+  return { type: platform.isDesktopLike ? 'local' : 'none' }
 }
 
 let initSettingsStorePromise: Promise<SettingsStoreState> | null = null
@@ -31,6 +32,17 @@ export function initSettingsStore() {
       .getState()
       .hydrate()
       .then(() => {
+        if (!featureFlags.chatboxAI) {
+          const patch = getServiceIndependentSettingsPatch(
+            settingsStore.getState().getSettings(),
+            getPlatformDefaultDocumentParser()
+          )
+          if (Object.keys(patch).length > 0) settingsStore.getState().setSettings(patch)
+          settingsStore.subscribe((state) => {
+            const importedPatch = getServiceIndependentSettingsPatch(state.getSettings(), getPlatformDefaultDocumentParser())
+            if (Object.keys(importedPatch).length > 0) state.setSettings(importedPatch)
+          })
+        }
         const state = settingsStore.getState()
         const providers = state.providers
         const providersCount =

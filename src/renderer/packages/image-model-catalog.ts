@@ -1,3 +1,4 @@
+import { featureFlags } from '@/utils/feature-flags'
 import { isUsingOAuth, mergeSharedOAuthProviderSettings } from '@shared/oauth'
 import { ModelProviderEnum, ModelProviderType, type ProviderModelInfo, type Settings } from '@shared/types'
 import { getLogger } from '@/lib/utils'
@@ -109,7 +110,7 @@ export async function getAvailableImageModels(
 ): Promise<AvailableImageModel[]> {
   const catalog: AvailableImageModel[] = []
 
-  if (settings.licenseKey) {
+  if (featureFlags.chatboxAI && settings.licenseKey) {
     const excluded = new Set(settings.providers?.[ModelProviderEnum.ChatboxAI]?.excludedModels ?? [])
     const chatboxModels = (await loadRemoteModels(ModelProviderEnum.ChatboxAI, settings)).filter(
       (model) => !excluded.has(model.modelId)

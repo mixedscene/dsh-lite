@@ -1,6 +1,6 @@
 import type { ModelMessage } from 'ai'
 import { isExpectedGenerationError } from '../../models/error-classification'
-import type { ModelInterface } from '../../models/types'
+import type { CallChatCompletionOptions, ModelInterface } from '../../models/types'
 import type { ModelFactoryPort, SettingsRepositoryPort } from '../../ports'
 import { nameConversation } from '../../prompts'
 import {
@@ -33,6 +33,7 @@ export interface SessionNamingServiceDependencies {
   scheduler: NameGenerationSchedulerPort
   getLanguageName(language: Language): string
   toModelMessages(messages: Message[], model: ModelInterface): Promise<ModelMessage[]>
+  getCallOptions?(session: Session, model: ModelInterface): CallChatCompletionOptions
   reportUnexpectedError(error: unknown): void
 }
 
@@ -255,6 +256,7 @@ export class SessionNamingService {
       )
       const result = await model.chat(await this.dependencies.toModelMessages(prompt, model), {
         sessionId,
+        ...this.dependencies.getCallOptions?.(session, model),
       })
       const name = sanitizeGeneratedSessionName(
         (result.contentParts ?? [])

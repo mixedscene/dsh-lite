@@ -19,7 +19,7 @@ export const Route = createFileRoute('/settings/default-models')({
 export function RouteComponent() {
   const { t } = useTranslation()
   const { setSettings, ...settings } = useSettingsStore((state) => state)
-  const chatboxAIAutoText = settings.licenseKey ? t('Auto (Use Chatbox AI)')! : t('None')!
+  const chatboxAIAutoText = t('None')!
 
   return (
     <Stack p="md" gap="xl">
@@ -141,7 +141,7 @@ export function RouteComponent() {
         <ModelSelector
           position="bottom-start"
           showAuto={true}
-          autoText={settings.licenseKey ? t('Auto (Use Chatbox AI)')! : t('None')!}
+          autoText={t('None')!}
           width={320}
           modelFilter={(model) => model.capabilities?.includes('vision') ?? false}
           selectedProviderId={settings.ocrModel?.provider}
@@ -160,7 +160,7 @@ export function RouteComponent() {
           }
         >
           <ModelSelectContent
-            autoText={settings.licenseKey ? t('Auto (Use Chatbox AI)')! : t('None')!}
+            autoText={t('None')!}
             provider={settings.ocrModel?.provider}
             model={settings.ocrModel?.model}
           />
@@ -204,7 +204,7 @@ export function RouteComponent() {
         </ModelSelector>
 
         <Text c="chatbox-tertiary" size="xs">
-          {t('When selected, Chatbox will use this model instead of the automatic Chatbox AI embedding model.')}
+          {t('Chatbox will use this model for document embeddings.')}
         </Text>
       </Stack>
 
@@ -241,7 +241,7 @@ export function RouteComponent() {
         </ModelSelector>
 
         <Text c="chatbox-tertiary" size="xs">
-          {t('When selected, Chatbox will use this model instead of the automatic Chatbox AI reranking model.')}
+          {t('Chatbox will use this model for reranking search results.')}
         </Text>
       </Stack>
     </Stack>

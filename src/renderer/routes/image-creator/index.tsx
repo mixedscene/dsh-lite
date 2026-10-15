@@ -240,7 +240,7 @@ function ImageCreatorPage() {
   const tempUploadKeysRef = useRef<Set<string>>(new Set())
   const [showHistory, setShowHistory] = useState(true)
   const [showMobileHistory, setShowMobileHistory] = useState(false)
-  const [selectedProvider, setSelectedProvider] = useState<string>(ModelProviderEnum.ChatboxAI)
+  const [selectedProvider, setSelectedProvider] = useState<string>(ModelProviderEnum.OpenAI)
   const [selectedModel, setSelectedModel] = useState<string>('')
   const [selectedRatio, setSelectedRatio] = useState<string>('auto')
   const [showModelDrawer, setShowModelDrawer] = useState(false)

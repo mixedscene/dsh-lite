@@ -12,12 +12,12 @@ const ALL_PARSER_OPTIONS: {
   desktopOnly?: boolean
 }[] = [
   { value: 'local', label: 'Local', desktopOnly: true }, // Only available on desktop
-  { value: 'chatbox-ai', label: 'Chatbox AI' },
+  { value: 'none', label: 'Text Only' },
   { value: 'mineru', label: 'MinerU', desktopOnly: true }, // Only available on desktop (requires IPC)
 ]
 
 const PARSER_DESCRIPTIONS: Record<DocumentParserType, string> = {
-  none: 'Only supports basic text files (.txt, .md, .json, code files, etc.). For PDF and Office files, please switch to Chatbox AI.',
+  none: 'Only supports basic text files (.txt, .md, .json, code files, etc.).',
   local:
     'Uses built-in document parsing feature, supports common file types. Free usage, no compute points will be consumed.',
   'chatbox-ai':
@@ -50,7 +50,7 @@ export function DocumentParserSettings({ showTitle = true }: DocumentParserSetti
   }, [])
 
   const storedParserType = documentParser?.type || getPlatformDefaultDocumentParser().type
-  const currentParserType = storedParserType === 'none' ? getPlatformDefaultDocumentParser().type : storedParserType
+  const currentParserType = storedParserType === 'chatbox-ai' ? getPlatformDefaultDocumentParser().type : storedParserType
 
   const handleParserTypeChange = useCallback(
     (value: string | null) => {

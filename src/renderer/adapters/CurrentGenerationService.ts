@@ -58,6 +58,7 @@ import { markSessionReplyCompleted } from '@/stores/sessionActivityStore'
 import * as settingActions from '@/stores/settingActions'
 import { uiStore } from '@/stores/uiStore'
 import { trackEvent } from '@/utils/track'
+import { prepareAntigravityGeneration } from './AntigravityGenerationPreparation'
 import { CurrentAttachmentAdapter } from './CurrentAttachmentAdapter'
 import { CurrentBlobStorage } from './CurrentBlobStorage'
 import { currentModelFactory } from './CurrentModelFactory'
@@ -194,6 +195,19 @@ const dependencies: GenerationServiceDependencies<ModelDependencies> = {
   },
   preparation: {
     async prepare(request) {
+      if (request.settings.provider === 'antigravity') {
+        return prepareAntigravityGeneration(request, async (owner) => {
+          await rendererApplication.sessions.updateSession(request.session.id, (current) => {
+            request.signal.throwIfAborted()
+            if (!current) throw new SessionNotFoundError(request.session.id)
+            if (current.antigravity && (current.antigravity.accountId !== owner.accountId ||
+              (current.antigravity.project && current.antigravity.project !== owner.project))) {
+              throw new Error('The Google account for this chat changed while preparing the request')
+            }
+            return { ...current, antigravity: { ...current.antigravity, ...owner } }
+          })
+        })
+      }
       const prepared = await prepareAgentGenerationHarness({
         session: request.session,
         settings: request.settings,

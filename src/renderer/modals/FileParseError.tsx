@@ -63,7 +63,7 @@ const FileParseError = NiceModal.create(({ errorCode, fileName }: FileParseError
       return (
         <Text>
           {t(
-            'This large file needs Chatbox AI to finish indexing. Sign in to Chatbox AI, then retry this file. If you do not want to use Chatbox AI, remove the file and upload a smaller attachment instead.'
+            'This attachment cannot be indexed with the current configuration. Please use a configured knowledge base or upload a smaller attachment instead.'
           )}
         </Text>
       )

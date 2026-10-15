@@ -1,3 +1,4 @@
+import { antigravityOwnerFromMessages } from '@shared/providers/definitions/models/antigravity'
 import type { Session } from '@chatbox/core'
 import { SessionNamingService } from '@chatbox/core/application/session'
 import { currentModelFactory } from '@/adapters/CurrentModelFactory'
@@ -25,6 +26,9 @@ const namingService = new SessionNamingService({
   getLanguageName: (language) => languageNameMap[language],
   toModelMessages: (messages, model) =>
     convertToModelMessages(messages, { modelSupportVision: model.isSupportVision() }),
+  getCallOptions: (session, model) => model.name === 'Antigravity'
+    ? { antigravity: antigravityOwnerFromMessages(session.messages, session.antigravity) }
+    : {},
   reportUnexpectedError: (error) => {
     reportError(error, {
       domain: 'ai-generation',

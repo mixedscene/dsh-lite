@@ -1,3 +1,4 @@
+import { featureFlags } from '@/utils/feature-flags'
 import { Button, Flex, Paper, Stack, Text } from '@mantine/core'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -18,7 +19,7 @@ export function ChatboxWelcomeCard(props: { mode: HomeWelcomeCardMode; pageName:
   )
   const pendingActionRef = useRef(false)
 
-  if (mode === 'none') {
+  if (!featureFlags.chatboxAI || mode === 'none') {
     return null
   }
 

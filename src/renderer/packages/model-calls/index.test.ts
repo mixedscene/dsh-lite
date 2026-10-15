@@ -26,3 +26,29 @@ describe('generateText', () => {
     expect(chatMock).toHaveBeenCalledWith(expect.any(Array), { sessionId: 'session-1' })
   })
 })
+
+
+describe('Antigravity auxiliary account snapshots', () => {
+  const metadata = {
+    version: 1 as const, accountId: 'account-A', project: 'project-A', modelId: 'claude-test', sessionId: 'scoped',
+    parts: [{ text: 'Private reply', thoughtSignature: 'signature' }], complete: true, status: 'completed' as const, finishReason: 'STOP',
+  }
+  it('passes stored ownership and raw metadata conversion to independent auxiliary calls', async () => {
+    const messages: Message[] = [{ id: 'a1', role: 'assistant', contentParts: [{ type: 'text', text: 'Private reply' }], antigravity: metadata }]
+    convertToModelMessagesMock.mockResolvedValue([{ role: 'assistant', content: 'Private reply' }])
+    const chat = vi.fn().mockResolvedValue({ contentParts: [] })
+    const model = { name: 'Antigravity', isSupportVision: () => false, chat } as unknown as ModelInterface
+    await generateText(model, messages)
+    expect(convertToModelMessagesMock).toHaveBeenLastCalledWith(messages, { modelSupportVision: false, preserveAntigravity: true })
+    expect(chat).toHaveBeenLastCalledWith(expect.any(Array), { antigravity: { accountId: 'account-A', project: 'project-A' } })
+  })
+  it('rejects a mixed-account transcript before conversion or HTTP dispatch', async () => {
+    const chat = vi.fn()
+    const model = { name: 'Antigravity', isSupportVision: () => false, chat } as unknown as ModelInterface
+    await expect(generateText(model, [
+      { id: 'a1', role: 'assistant', contentParts: [], antigravity: metadata },
+      { id: 'a2', role: 'assistant', contentParts: [], antigravity: { ...metadata, accountId: 'account-B' } },
+    ])).rejects.toThrow('multiple Google accounts')
+    expect(chat).not.toHaveBeenCalled()
+  })
+})

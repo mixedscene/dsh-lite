@@ -1,3 +1,4 @@
+import { featureFlags } from '@/utils/feature-flags'
 import NiceModal from '@ebay/nice-modal-react'
 import {
   Avatar,
@@ -238,7 +239,7 @@ function Root() {
       const needsSetup = settingActions.needEditSetting()
 
       // Auto-navigate to guide for new users who need setup
-      if (!isExceeded && !onboardingCompleted && needsSetup) {
+      if (featureFlags.chatboxAI && !isExceeded && !onboardingCompleted && needsSetup) {
         router.navigate({ to: '/guide', replace: true })
         return
       }

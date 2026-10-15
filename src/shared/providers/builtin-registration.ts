@@ -1,11 +1,10 @@
 /**
  * Ordered side-effect entrypoint for the built-in provider registry.
  *
- * Keep ChatboxAI first and preserve this import order: the registry's Map order
+ * Preserve this import order: the registry's Map order
  * is also the default provider display order. Hosts that need model creation
  * import this module explicitly through their model-runtime entrypoint.
  */
-import './definitions/chatboxai'
 import './definitions/openai'
 import './definitions/openai-responses'
 import './definitions/gemini'

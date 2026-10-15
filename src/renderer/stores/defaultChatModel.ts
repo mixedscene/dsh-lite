@@ -1,3 +1,4 @@
+import { featureFlags } from '@/utils/feature-flags'
 import { type ChatboxAILicenseDetail, ModelProviderEnum, type Session } from '@shared/types'
 import { isChatboxAILowTierPlan } from './licensePlan'
 
@@ -27,7 +28,7 @@ function isChatboxLicenseDefaultModelId(value: string | undefined): value is Cha
 export function resolveChatboxLicenseDefaultModel(
   settings: ChatboxDefaultModelSettings
 ): DefaultChatModelSelection | undefined {
-  if (!settings.licenseKey || settings.hasExpiredLicense) {
+  if (!featureFlags.chatboxAI || !settings.licenseKey || settings.hasExpiredLicense) {
     return undefined
   }
 

@@ -1,3 +1,4 @@
+import { featureFlags } from '@/utils/feature-flags'
 import i18n from '@/i18n'
 import { getLicenseKey } from '@/stores/settingActions'
 import type { MCPServerConfig } from './types'
@@ -9,7 +10,7 @@ export interface BuildinMCPServerConfig {
   url: string
 }
 
-export const BUILTIN_MCP_SERVERS: BuildinMCPServerConfig[] = [
+export const BUILTIN_MCP_SERVERS: BuildinMCPServerConfig[] = featureFlags.chatboxAI ? [
   {
     id: 'fetch',
     name: 'Fetch',
@@ -36,7 +37,7 @@ export const BUILTIN_MCP_SERVERS: BuildinMCPServerConfig[] = [
     description: i18n.t('Retrieves up-to-date documentation and code examples for any library.'),
     url: 'https://mcp.chatboxai.app/context7',
   },
-]
+] : []
 
 export function getBuiltinServerConfig(id: string, licenseKey?: string): MCPServerConfig | null {
   const config = BUILTIN_MCP_SERVERS.find((s) => s.id === id)

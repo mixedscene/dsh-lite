@@ -9,6 +9,7 @@ import {
   type ToolUseScope,
 } from 'src/shared/types'
 import { z } from 'zod'
+import { AntigravitySessionSchema, type AntigravityMetadata } from '../providers/antigravity/types'
 
 export interface ModelInterface {
   name: string
@@ -58,6 +59,7 @@ export interface ResolvedChatRequest {
 
 export const CallChatCompletionOptionsSchema = z.object({
   sessionId: z.string().optional(),
+  antigravity: AntigravitySessionSchema.optional(),
   agentMode: z.boolean().optional(),
   signal: z.instanceof(AbortSignal).optional(),
   onResultChange: z.custom<OnResultChange>().optional(),
@@ -67,6 +69,8 @@ export const CallChatCompletionOptionsSchema = z.object({
 
 export interface CallChatCompletionOptions<Tools extends ToolSet = ToolSet> {
   sessionId?: string
+  /** Immutable account/project snapshot for this Antigravity request. */
+  antigravity?: { accountId: string; project?: string }
   /** Whether Agent/Work Mode capabilities are active for this request. */
   agentMode?: boolean
   signal?: AbortSignal
@@ -82,6 +86,7 @@ export interface ResultChange {
   // reasoningContent?: string
   // toolCalls?: MessageToolCalls
   contentParts?: MessageContentParts
+  antigravity?: AntigravityMetadata
   tokenCount?: number // 当前消息的 token 数量
   tokensUsed?: number // 生成当前消息的 token 使用量
 }
@@ -93,6 +98,8 @@ export type OnStatusChange = (status: MessageStatus | null) => void
 // New types for chatStream() API
 export interface ChatStreamOptions {
   sessionId?: string
+  /** Immutable account/project snapshot for this Antigravity request. */
+  antigravity?: { accountId: string; project?: string }
   /** Whether Agent/Work Mode capabilities are active for this request. */
   agentMode?: boolean
   signal?: AbortSignal
@@ -119,4 +126,4 @@ export interface ChatStreamOptions {
 export type ModelStatus = MessageStatus
 
 // ModelStreamPart extends AI SDK's TextStreamPart with custom status events
-export type ModelStreamPart<T extends ToolSet = ToolSet> = TextStreamPart<T> | { type: 'status'; status: MessageStatus }
+export type ModelStreamPart<T extends ToolSet = ToolSet> = TextStreamPart<T> | { type: 'status'; status: MessageStatus } | { type: 'antigravity-metadata'; antigravity: AntigravityMetadata }

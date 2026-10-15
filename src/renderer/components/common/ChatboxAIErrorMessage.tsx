@@ -1,3 +1,4 @@
+import { featureFlags } from '@/utils/feature-flags'
 import { Link } from '@mui/material'
 import { ChatboxAIAPIError } from '@shared/models/errors'
 import type { FC } from 'react'
@@ -29,6 +30,12 @@ export const ChatboxAIErrorMessage: FC<ChatboxAIErrorMessageProps> = ({
   model,
   trackingSource = 'msg_upgrade_required',
 }) => {
+  if (!featureFlags.chatboxAI) {
+    return <Trans
+      i18nKey="This service is unavailable. Please select a configured provider in <OpenSettingButton>settings</OpenSettingButton>."
+      components={{ OpenSettingButton: <Link component="button" type="button" onClick={() => navigateToSettings('/provider')} /> }}
+    />
+  }
   const detail = ChatboxAIAPIError.getDetail(errorCode)
   if (!detail) return null
 

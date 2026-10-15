@@ -41,13 +41,9 @@ export function RouteComponent() {
     const systemProviders = SystemProviders().filter(
       (p) => !(isExceeded && p.name.toLocaleLowerCase().match(/openai|claude|gemini/i))
     )
-    // Put ChatboxAI first
-    const chatboxAI = systemProviders.find((p) => p.id === 'chatbox-ai')
-    const others = systemProviders.filter((p) => p.id !== 'chatbox-ai')
-    return [...(chatboxAI ? [chatboxAI] : []), ...others, ...(customProviders || [])].map((p) => ({
-      ...p,
-      ...(providersMap?.[p.id] || {}),
-    }))
+    return [...systemProviders, ...(customProviders || [])]
+      .filter((p) => p.id !== 'chatbox-ai')
+      .map((p) => ({ ...p, ...(providersMap?.[p.id] || {}) }))
   }, [customProviders, isExceeded, providersMap])
 
   const allSystemProviders = useMemo(() => {
@@ -67,7 +63,7 @@ export function RouteComponent() {
   const handleSelectProvider = useCallback(
     (providerId: string) => {
       navigate({
-        to: providerId === 'chatbox-ai' ? '/settings/provider/chatbox-ai' : '/settings/provider/$providerId',
+        to: '/settings/provider/$providerId',
         params: { providerId },
       })
     },

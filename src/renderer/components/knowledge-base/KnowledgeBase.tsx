@@ -1,3 +1,4 @@
+import { featureFlags } from '@/utils/feature-flags'
 import { Alert, Button, Flex, Group, Paper, Pill, Stack, Text, Title } from '@mantine/core'
 import { SystemProviders } from '@shared/defaults'
 import type { KnowledgeBase, ProviderModelInfo } from '@shared/types'
@@ -141,7 +142,7 @@ const KnowledgeBasePage: React.FC = () => {
   } | null>(null)
 
   const canUseChatboxAIProvider = useMemo(() => {
-    return !!(chatboxAIModels && licenseKey)
+    return featureFlags.chatboxAI && !!(chatboxAIModels && licenseKey)
   }, [chatboxAIModels, licenseKey])
 
   const isChatboxAIKnowledgeBase = useCallback(
@@ -303,6 +304,7 @@ const KnowledgeBasePage: React.FC = () => {
 
   // Fetch Chatbox AI models configuration
   useEffect(() => {
+    if (!featureFlags.chatboxAI) return
     const fetchChatboxAIModels = async () => {
       try {
         const config = await remote.getRemoteConfig('knowledge_base_models')
@@ -360,7 +362,7 @@ const KnowledgeBasePage: React.FC = () => {
 
       // Reset form
       setNewKbName('')
-      setNewProviderMode('chatbox-ai')
+      setNewProviderMode(featureFlags.chatboxAI ? 'chatbox-ai' : 'custom')
       setNewEmbeddingModel(null)
       setNewRerankModel(null)
       setNewVisionModel(null)
@@ -538,7 +540,7 @@ const KnowledgeBasePage: React.FC = () => {
       </Modal>
       {!isUnsupportedPlatform && (
         <Stack gap="xl">
-          {chatboxAIKbNeedsLogin && (
+          {featureFlags.chatboxAI && chatboxAIKbNeedsLogin && (
             <Alert
               variant="light"
               color="orange"

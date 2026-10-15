@@ -1,3 +1,4 @@
+import { featureFlags } from '@/utils/feature-flags'
 import { ActionIcon, Button, Flex, Text } from '@mantine/core'
 import type { Session } from '@shared/types'
 import { IconAlertCircle, IconX } from '@tabler/icons-react'
@@ -53,7 +54,7 @@ export function WebSearchUnavailableBanner({ session }: { session: Session }) {
   const stillRequiresChatboxSignIn =
     getWebSearchConfigurationIssue(webSearchConfiguration, licenseKey) === 'chatbox-ai-sign-in'
 
-  if (!stillRequiresChatboxSignIn || dismissed || !hasSignInError || latestMessageHasSignInError) return null
+  if (!featureFlags.chatboxAI || !stillRequiresChatboxSignIn || dismissed || !hasSignInError || latestMessageHasSignInError) return null
 
   const dismiss = () => {
     dismissedSessionIds.add(session.id)

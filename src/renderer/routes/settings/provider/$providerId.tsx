@@ -55,6 +55,7 @@ import PopoverConfirm from '@/components/common/PopoverConfirm'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
 import { ModelList } from '@/components/ModelList'
 import { AppTooltip as Tooltip } from '@/components/ui/tooltip'
+import { AntigravityAccounts } from '@/components/settings/AntigravityAccounts'
 import { useOAuth } from '@/hooks/useOAuth'
 import { useOAuthProviders } from '@/hooks/useOAuthProviders'
 import { enrichModelsFromRegistry, forceRefreshRegistry, useModelRegistryVersion } from '@/packages/model-registry'
@@ -95,7 +96,7 @@ const BUILTIN_API_HOST_PROVIDERS = new Set<string>([
   ModelProviderEnum.ZhipuGLMCodingPlan,
 ])
 
-const OAUTH_ONLY_PROVIDERS = new Set<string>([ModelProviderEnum.QwenPortal])
+const OAUTH_ONLY_PROVIDERS = new Set<string>([ModelProviderEnum.QwenPortal, 'antigravity'])
 
 const OAUTH_PROVIDER_FALLBACKS: Record<string, OAuthProviderInfo> = {
   claude: {
@@ -596,6 +597,8 @@ function ProviderSettings({ providerId }: { providerId: string }) {
             </Text>
           </Stack>
         )}
+
+        {providerId === 'antigravity' && platform.type === 'mobile' && <AntigravityAccounts onAccountChange={() => setFetchedModels(undefined)} />}
 
         {/* OAuth Login (Desktop only) */}
         {isDesktop && supportsOAuth && (

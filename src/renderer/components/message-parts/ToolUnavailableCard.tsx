@@ -1,3 +1,4 @@
+import { featureFlags } from '@/utils/feature-flags'
 import { Box, Button, Group, Paper, Stack, Text, ThemeIcon } from '@mantine/core'
 import { IconAlertCircle, IconArrowUpRight, IconWorldOff } from '@tabler/icons-react'
 import type { FC } from 'react'
@@ -25,7 +26,7 @@ async function openSettings(path?: string): Promise<void> {
 export const ToolUnavailableCard: FC<ToolUnavailableCardProps> = ({ toolLabel, toolName, errorCode }) => {
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
-  const isChatboxSearchSignInRequired = toolName === 'web_search' && errorCode === CHATBOX_SEARCH_LICENSE_REQUIRED
+  const isChatboxSearchSignInRequired = featureFlags.chatboxAI && toolName === 'web_search' && errorCode === CHATBOX_SEARCH_LICENSE_REQUIRED
   const ToolErrorIcon = toolName === 'web_search' || toolName === 'parse_link' ? IconWorldOff : IconAlertCircle
 
   return (

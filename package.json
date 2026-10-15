@@ -72,7 +72,8 @@
     "sync:error-i18n-keys": "node script/sync-error-i18n-keys.mjs",
     "translate": "pnpm run sync:error-i18n-keys && i18next && node script/translate.mjs",
     "storybook": "cross-env NODE_OPTIONS=\"--require=./.storybook/ignore-root-env.cjs\" storybook dev -p 6006",
-    "build-storybook": "cross-env NODE_OPTIONS=\"--require=./.storybook/ignore-root-env.cjs\" storybook build"
+    "build-storybook": "cross-env NODE_OPTIONS=\"--require=./.storybook/ignore-root-env.cjs\" storybook build",
+    "mobile:build:original": "cross-env CHATBOX_LITE=0 CHATBOX_BUILD_TARGET=mobile_app CHATBOX_BUILD_PLATFORM=android pnpm run build:renderer"
   },
   "repository": {
     "type": "git",

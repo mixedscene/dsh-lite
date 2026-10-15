@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import type { ModelInterface } from '../../models/types'
 import { buildNameGenerationAttemptKey, getCurrentThreadNamingIdentity } from '../../session/auto-title'
 import type { Message, Session, Settings, Updater } from '../../types'
-import { type ScheduledNameGeneration, SessionNamingService } from './SessionNamingService'
+import { type ScheduledNameGeneration, SessionNamingService, type SessionNamingServiceDependencies } from './SessionNamingService'
 import type { SessionMetadataUpdate } from './session-metadata'
 import { SessionNotFoundError } from './SessionWriteCoordinator'
 
@@ -21,7 +21,7 @@ function createSession(overrides: Partial<Session> = {}): Session {
   }
 }
 
-function createHarness() {
+function createHarness(getCallOptions?: SessionNamingServiceDependencies['getCallOptions']) {
   let session: Session | null = createSession()
   const settings = {
     language: 'en',
@@ -80,6 +80,7 @@ function createHarness() {
     },
     getLanguageName: (language) => (language === 'zh-Hans' ? 'Simplified Chinese' : 'English'),
     toModelMessages,
+    getCallOptions,
     reportUnexpectedError: vi.fn(),
   })
   return {
@@ -105,6 +106,16 @@ afterEach(() => {
 })
 
 describe('SessionNamingService', () => {
+  test('preserves the session account snapshot when naming uses a synthesized prompt', async () => {
+    const owner = { accountId: 'account-A', project: 'project-A' }
+    const getCallOptions = vi.fn((session: Session) => ({ antigravity: session.antigravity }))
+    const harness = createHarness(getCallOptions)
+    harness.setSession(createSession({ antigravity: owner }))
+    await expect(harness.service.generateNameAndThreadName('session-1')).resolves.toBe(true)
+    expect(getCallOptions).toHaveBeenCalledWith(expect.objectContaining({ antigravity: owner }), expect.any(Object))
+    expect(harness.chat).toHaveBeenCalledWith(expect.any(Array), { sessionId: 'session-1', antigravity: owner })
+  })
+
   test('uses the injected model and locale, cleans the name, and persists it', async () => {
     const harness = createHarness()
 

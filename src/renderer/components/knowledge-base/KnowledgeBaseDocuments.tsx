@@ -1,3 +1,4 @@
+import { featureFlags } from '@/utils/feature-flags'
 import {
   ActionIcon,
   Alert,
@@ -127,7 +128,7 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
   // Check if we should show the Chatbox AI suggestion for failed files
   // Show suggestion only if there are failed files that are NOT in the exception list
   const shouldShowChatboxAISuggestion = useMemo(() => {
-    if (failedFiles.length === 0) return false
+    if (!featureFlags.chatboxAI || failedFiles.length === 0) return false
     // Check if any failed file used a parser that should show the suggestion
     return failedFiles.some(
       (file) =>

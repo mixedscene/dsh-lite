@@ -3,23 +3,16 @@ import { Link } from '@mui/material'
 import { TestId } from '@shared/automation/testids'
 import { aiProviderNameHash } from '@shared/models'
 import type { Message } from '@shared/types'
-import { ModelProviderEnum } from '@shared/types/provider'
 import { IconCheck, IconChevronDown, IconChevronUp, IconCopy, IconLanguage, IconReload } from '@tabler/icons-react'
 import type React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { trackJkClickEvent } from '@/analytics/jk'
-import { JK_EVENTS, JK_PAGE_NAMES } from '@/analytics/jk-events'
-import { ChatboxAIErrorMessage } from '@/components/common/ChatboxAIErrorMessage'
-import LinkTargetBlank from '@/components/common/Link'
 import { AppTooltip as Tooltip } from '@/components/ui/tooltip'
 import { useCopied } from '@/hooks/useCopied'
 import { navigateToSettings } from '@/modals/settings-navigation'
-import { buildChatboxUrl } from '@/packages/remote'
 import { translateTexts } from '@/packages/translation'
-import platform from '@/platform'
 import * as settingActions from '@/stores/settingActions'
-import { useLanguage, useSettingsStore } from '@/stores/settingsStore'
+import { useLanguage } from '@/stores/settingsStore'
 import type { MessageErrorPresentation } from './message-error-presentation'
 
 const MAX_CHARS = 200
@@ -80,7 +73,7 @@ function getProviderName(providerId?: string): string {
   return (providerId && aiProviderNameHash[providerId as keyof typeof aiProviderNameHash]) || 'AI Provider'
 }
 
-function ErrorTip({ presentation, model }: { presentation: GenericPresentation; model?: string }) {
+function ErrorTip({ presentation }: { presentation: GenericPresentation }) {
   switch (presentation.kind) {
     case 'context-limit':
       return (
@@ -105,45 +98,10 @@ function ErrorTip({ presentation, model }: { presentation: GenericPresentation; 
       if (httpStatusI18nKey) {
         return <Trans i18nKey={httpStatusI18nKey} values={{ aiProvider: getProviderName(presentation.providerId) }} />
       }
-      if (presentation.providerId === ModelProviderEnum.ChatboxAI) {
-        return (
-          <Trans
-            i18nKey="Connection to {{aiProvider}} failed. This typically occurs due to a temporary service issue. Please try again later or <buttonOpenSettings>check your settings</buttonOpenSettings>."
-            values={{ aiProvider: aiProviderNameHash[ModelProviderEnum.ChatboxAI] }}
-            components={{
-              buttonOpenSettings: (
-                <a
-                  className="cursor-pointer underline font-bold hover:text-blue-600 transition-colors"
-                  onClick={() => navigateToSettings(`/provider/${ModelProviderEnum.ChatboxAI}`)}
-                />
-              ),
-            }}
-          />
-        )
-      }
       return (
         <Trans
-          i18nKey="Connection to {{aiProvider}} failed. This typically occurs due to incorrect configuration or {{aiProvider}} account issues. Please <buttonOpenSettings>check your settings</buttonOpenSettings> and verify your {{aiProvider}} account status, or purchase a <LinkToLicensePricing>Chatbox AI License</LinkToLicensePricing> to unlock all advanced models instantly without any configuration."
+          i18nKey="Connection to {{aiProvider}} failed. Please check your provider settings and account status."
           values={{ aiProvider: getProviderName(presentation.providerId) }}
-          components={{
-            buttonOpenSettings: (
-              <a
-                className="cursor-pointer underline font-bold hover:text-blue-600 transition-colors"
-                onClick={() =>
-                  navigateToSettings(presentation.providerId ? `/provider/${presentation.providerId}` : '/provider')
-                }
-              />
-            ),
-            LinkToLicensePricing: (
-              <LinkTargetBlank
-                className="!font-bold !text-gray-700 hover:!text-blue-600 transition-colors"
-                href={buildChatboxUrl(
-                  `/redirect_app/advanced_url_processing/${settingActions.getLanguage()}?utm_source=app&utm_content=msg_bad_provider`
-                )}
-              />
-            ),
-            a: <a href={buildChatboxUrl(`/redirect_app/faqs/${settingActions.getLanguage()}`)} target="_blank" />,
-          }}
         />
       )
     }
@@ -165,22 +123,9 @@ function ErrorTip({ presentation, model }: { presentation: GenericPresentation; 
         />
       )
     case 'known-chatbox-api':
-      return <ChatboxAIErrorMessage errorCode={presentation.errorCode} model={model} />
+      return <Trans i18nKey="This provider is no longer available. Please select a configured provider." />
     case 'unknown':
-      return (
-        <Trans
-          i18nKey="unknown error tips"
-          components={[
-            <a
-              key="a"
-              href={buildChatboxUrl(
-                `/redirect_app/faqs/${settingActions.getLanguage()}?utm_source=app&utm_content=msg_error_unknown`
-              )}
-              target="_blank"
-            />,
-          ]}
-        />
-      )
+      return <Trans i18nKey="An unexpected error occurred. Please retry or check the provider settings." />
   }
 }
 
@@ -190,9 +135,8 @@ export function GenericMessageError(props: {
   onRetry?: () => void | Promise<void>
   isBubbleLayout?: boolean
 }) {
-  const { msg, presentation, onRetry, isBubbleLayout } = props
+  const { presentation, onRetry, isBubbleLayout } = props
   const { t } = useTranslation()
-  const licenseKey = useSettingsStore((state) => state.licenseKey)
   const language = useLanguage()
   const [expanded, setExpanded] = useState(false)
   const [translation, setTranslation] = useState<{ source: string; text: string } | null>(null)
@@ -227,7 +171,7 @@ export function GenericMessageError(props: {
       className={`message-error-tips text-sm text-chatbox-tint-error ${isBubbleLayout ? 'py-2' : 'px-4 py-3 rounded-lg border border-solid border-chatbox-border-error bg-chatbox-background-error-secondary'}`}
     >
       <b>
-        <ErrorTip presentation={presentation} model={msg.model} />
+        <ErrorTip presentation={presentation} />
       </b>
       {onRetry && (
         <Flex mt="xs" gap="xs" align="center">
@@ -307,33 +251,7 @@ export function GenericMessageError(props: {
           )}
         </>
       )}
-      {!licenseKey && msg.aiProvider !== ModelProviderEnum.ChatboxAI && (
-        <div className="mt-3 pt-3 border-t border-red-200 dark:border-red-800/30 text-right">
-          <Tooltip
-            label={t(
-              'If you have never had a license before, you can claim it after logging in on the official website.'
-            )}
-            withArrow
-            multiline
-            maw={240}
-            position="bottom-end"
-            styles={{ tooltip: { backgroundColor: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(4px)' } }}
-          >
-            <span
-              className="text-sm font-medium text-blue-600 cursor-pointer hover:text-blue-700 hover:underline transition-colors"
-              onClick={() => {
-                trackJkClickEvent(JK_EVENTS.FREE_LICENSE_CLAIM_CLICK, {
-                  pageName: JK_PAGE_NAMES.CHAT_PAGE,
-                  content: 'chat_error',
-                })
-                platform.openLink('https://chatboxai.app/login')
-              }}
-            >
-              {t('Chatbox AI free trial available')} →
-            </span>
-          </Tooltip>
-        </div>
-      )}
+
     </div>
   )
 }

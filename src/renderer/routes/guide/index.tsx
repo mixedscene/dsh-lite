@@ -1,3 +1,4 @@
+import { featureFlags } from '@/utils/feature-flags'
 /**
  * Guide Session Page
  * A conversational onboarding experience for new users
@@ -30,7 +31,7 @@ import {
   IconRefresh,
   IconUserCheck,
 } from '@tabler/icons-react'
-import { createFileRoute, useBlocker } from '@tanstack/react-router'
+import { Navigate, createFileRoute, useBlocker } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/components/common/Divider'
@@ -52,6 +53,11 @@ export const Route = createFileRoute('/guide/')({
 })
 
 function GuidePage() {
+  if (!featureFlags.chatboxAI) return <Navigate to="/settings/provider" replace />
+  return <LegacyGuidePage />
+}
+
+function LegacyGuidePage() {
   const { t } = useTranslation()
   const [inputValue, setInputValue] = useState('')
   const viewportRef = useRef<HTMLDivElement>(null)
