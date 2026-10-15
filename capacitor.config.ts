@@ -7,7 +7,11 @@ const config: CapacitorConfig = {
   server: { androidScheme: 'https', hostname: 'localhost' },
   android: {
     allowMixedContent: false,
-    adjustMarginsForEdgeToEdge: 'auto',
+    // Capacitor's edge-to-edge handler only reserves the system bars and consumes the
+    // window insets, so the IME never reaches the WebView and the input box stays hidden
+    // behind the keyboard on Android 15+. MainActivity installs an equivalent handler
+    // that also accounts for the IME.
+    adjustMarginsForEdgeToEdge: 'disable',
     webContentsDebuggingEnabled: false,
     includePlugins: [
       '@capacitor/app',
