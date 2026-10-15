@@ -6,12 +6,13 @@ import type { AntigravityChatOptions, AntigravityChatResult, AntigravityDiscover
 export const ANTIGRAVITY_DISCOVERY_HOST = 'https://cloudcode-pa.googleapis.com'
 const ANTIGRAVITY_STREAM_PATH = '/v1internal:streamGenerateContent?alt=sse'
 /**
- * Generation runs on the host that served the model catalog first: a catalog fetched
- * from one host can name a model the other host does not know, which surfaces as a
- * bare 404 "Requested entity was not found". The daily host stays as a fallback for
- * accounts whose tier is only served there.
+ * Google partitions generation by account tier. Personal/consumer accounts (Free, Pro, Ultra,
+ * Google One - anything `loadCodeAssist` does not report as GCP-managed) are served only by the
+ * daily host; the production host answers those accounts with 429 RESOURCE_EXHAUSTED. The official
+ * client binds consumer accounts to daily and never falls back, so daily is attempted first and
+ * production stays as the fallback for licensed/enterprise accounts.
  */
-export const ANTIGRAVITY_STREAM_URLS = [`${ANTIGRAVITY_DISCOVERY_HOST}${ANTIGRAVITY_STREAM_PATH}`, `https://daily-cloudcode-pa.googleapis.com${ANTIGRAVITY_STREAM_PATH}`]
+export const ANTIGRAVITY_STREAM_URLS = [`https://daily-cloudcode-pa.googleapis.com${ANTIGRAVITY_STREAM_PATH}`, `${ANTIGRAVITY_DISCOVERY_HOST}${ANTIGRAVITY_STREAM_PATH}`]
 export const ANTIGRAVITY_STREAM_URL = ANTIGRAVITY_STREAM_URLS[0]
 const object = (value: unknown): Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
 const numeric = (value: unknown): number | undefined => typeof value === 'number' && Number.isFinite(value) ? value : undefined
@@ -104,12 +105,15 @@ export class AntigravityClient {
       for (const url of ANTIGRAVITY_STREAM_URLS) {
         options.signal?.throwIfAborted()
         try {
-          // A 404 means this host cannot resolve the entity the catalog named; the other host may.
+          // 404 means this host cannot resolve the entity the catalog named, so the other host is
+          // worth one attempt. 429 is the tier/quota answer of the host that serves this account:
+          // asking the other host cannot help and would only spend more quota, so it is reported
+          // as-is. The first failure is the one reported, since the first host serves this account.
           response = await checked(await this.transport.request({ accountId: options.accountId, signal: options.signal, stream: true, url, body: streamBody() }), contextOf(url, `model ${options.modelId}`))
           break
         } catch (error) {
           if (!(error instanceof AntigravityServiceError) || error.status !== 404) throw error
-          failure = error
+          if (!failure) failure = error
         }
       }
       if (!response) throw failure ?? new Error('Antigravity request failed')
