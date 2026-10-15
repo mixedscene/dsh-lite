@@ -53,6 +53,16 @@ function buildHeaders(options: RequestOptions, url: string): Headers {
   return headers
 }
 
+/**
+ * The app is served from the WebView's https origin, so an insecure endpoint can never be
+ * reached by fetch: the mixed-content policy blocks the request outright and the endpoint
+ * usually answers no preflight either. Such endpoints (self-hosted relays, local servers)
+ * go through the native transport, which is not subject to either restriction.
+ */
+function needsNativeTransport(url: string): boolean {
+  return /^http:\/\//i.test(url)
+}
+
 async function doRequest(url: string, options: RequestOptions): Promise<Response> {
   const { signal, retry = 3, useProxy = false, body, method } = options
   let requestUrl = url
@@ -66,7 +76,7 @@ async function doRequest(url: string, options: RequestOptions): Promise<Response
 
   const makeRequest = async () => {
     let res: Response
-    if (platform.type === 'mobile' && useProxy) {
+    if (platform.type === 'mobile' && (useProxy || needsNativeTransport(requestUrl))) {
       res = await handleMobileRequest(requestUrl, method, headers, body, signal)
     } else if (platform.type === 'desktop' && useProxy && !isLocalHost(url)) {
       res = await desktopDirectRequestFromWindow(requestUrl, method, headers, body, signal)

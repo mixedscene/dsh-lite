@@ -2,6 +2,14 @@ import type { LanguageModelUsage, ModelMessage } from 'ai'
 import type { CallChatCompletionOptions, ChatStreamOptions, ModelInterface, ModelStreamPart } from '../../../models/types'
 import type { MessageContentParts, ProviderModelInfo, StreamTextResult } from '../../../types'
 import { AntigravityClient } from '../../antigravity/client'
+import {
+  aggregateAntigravityModels,
+  antigravityBaseModelId,
+  antigravityModelIds,
+  antigravityReasoningLevel,
+  selectAntigravityTierModelId,
+  type AntigravityTierSelection,
+} from '../../antigravity/tier-utils'
 import { AntigravityMetadataSchema, type AntigravityChatOptions, type AntigravityChatResult, type AntigravityHistoryMessage, type AntigravityUpdate } from '../../antigravity/types'
 
 /** Auxiliary prompts flatten history, so mixed-account transcripts must fail closed. */
@@ -57,12 +65,39 @@ export default class Antigravity implements ModelInterface {
     const { account, client } = await resolveAntigravityAccount()
     const discovery = await client.discoverModels(account.id)
     const { antigravityNative } = await import('../../antigravity/native')
+    // The cache keeps every concrete tier; the picker shows one entry per model family.
     await antigravityNative.updateAccountCache({ accountId: account.id, project: discovery.project, modelCache: discovery.models })
-    return discovery.models
+    return aggregateAntigravityModels(discovery.models)
   }
   async chatWithHistory(options: AntigravityChatOptions): Promise<AntigravityChatResult> {
     const { createNativeAntigravityTransport } = await import('../../antigravity/native')
     return new AntigravityClient(createNativeAntigravityTransport()).chat(options)
+  }
+  /**
+   * Pickers offer one entry per family, so a family id is resolved back onto a concrete tier id
+   * (and its thinking level) before dispatch. The catalog comes from the account cache that
+   * listModels() refreshes, so the chat path stays offline; without that cache only an explicitly
+   * chosen level can be mapped, and the conventional tier id for it is the best answer available.
+   */
+  private resolveTierModel(
+    account: { modelCache?: unknown },
+    options: CallChatCompletionOptions
+  ): AntigravityTierSelection {
+    const level = antigravityReasoningLevel(options.providerOptions)
+    const cached = selectAntigravityTierModelId(this.modelId, level, antigravityModelIds(account.modelCache))
+    if (cached) return cached
+
+    const familyId = antigravityBaseModelId(this.modelId)
+    // No level was chosen and the chat already names a published tier: send it unchanged.
+    if (!level) return { modelId: this.modelId, thinkingLevel: 'low', includeThoughts: true }
+    if (level === 'off') {
+      return {
+        modelId: this.modelId === familyId ? `${familyId}-low` : this.modelId,
+        thinkingLevel: 'low',
+        includeThoughts: false,
+      }
+    }
+    return { modelId: `${familyId}-${level}`, thinkingLevel: level, includeThoughts: true }
   }
   private history(messages: ModelMessage[]): AntigravityHistoryMessage[] {
     return messages.map((message) => {
@@ -84,9 +119,11 @@ export default class Antigravity implements ModelInterface {
     const project = options.antigravity?.project ?? account.project ?? (await client.discoverModels(account.id, options.signal)).project
     // Discovery can outlive an account switch. Revalidate the immutable snapshot.
     await resolveAntigravityAccount({ accountId: account.id, project }, options.signal)
-    return client.chat({ accountId: account.id, project, modelId: this.modelId, sessionId: options.sessionId,
+    const selected = this.resolveTierModel(account, options)
+    return client.chat({ accountId: account.id, project, modelId: selected.modelId, sessionId: options.sessionId,
       messages: history, signal: options.signal, onUpdate, temperature: this.options.temperature,
-      topP: this.options.topP, maxOutputTokens: this.options.maxOutputTokens })
+      topP: this.options.topP, maxOutputTokens: this.options.maxOutputTokens,
+      thinkingLevel: selected.thinkingLevel, includeThoughts: selected.includeThoughts })
   }
   async chat(messages: ModelMessage[], options: CallChatCompletionOptions): Promise<StreamTextResult & AntigravityUpdate> {
     // Naming, summaries and capability probes own a fresh protocol session.

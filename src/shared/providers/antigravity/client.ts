@@ -70,6 +70,8 @@ export class AntigravityClient {
       })
     }
     if (!models.length) throw new Error('No Antigravity models are available for this account')
+    // The catalog keeps every concrete tier: the picker aggregates families for display, and the
+    // account cache needs the tier ids so a request can be resolved back onto a published one.
     return { project, models }
   }
 
@@ -89,7 +91,9 @@ export class AntigravityClient {
       if (options.temperature !== undefined) generationConfig.temperature = options.temperature
       if (options.topP !== undefined) generationConfig.topP = options.topP
       if (isClaude(options.modelId) && maxOutputTokens > 1024) generationConfig.thinkingConfig = { includeThoughts: true, thinkingBudget: 1024 }
-      else if (/gemini-3/i.test(options.modelId)) generationConfig.thinkingConfig = { includeThoughts: true, thinkingLevel: 'LOW' }
+      // The picker aggregates Antigravity's per-tier catalog entries, so the caller decides the
+      // level; the wire format keeps the enum case this endpoint already accepted.
+      else if (/gemini-3/i.test(options.modelId)) generationConfig.thinkingConfig = { includeThoughts: options.includeThoughts ?? true, thinkingLevel: (options.thinkingLevel ?? 'low').toUpperCase() }
       else if (/gemini-2\.5/i.test(options.modelId) && maxOutputTokens > 1024) generationConfig.thinkingConfig = { includeThoughts: true, thinkingBudget: 1024 }
       const system = [options.systemInstruction, ...options.messages.filter((message) => message.role === 'system').map((message) => message.contentParts.filter((part) => part.type === 'text').map((part) => part.text).join('\n'))].filter(Boolean).join('\n\n')
       const streamBody = () => JSON.stringify({ project: options.project, model: options.modelId, requestType: 'agent', userAgent: 'antigravity', requestId: `agent-${crypto.randomUUID()}`,

@@ -100,4 +100,39 @@ describe('provider API request routing', () => {
     expect(headers.get('CHATBOX-TARGET-URI')).toBeNull()
     expect(mocks.desktopDirectRequest).not.toHaveBeenCalled()
   })
+
+  it('routes insecure mobile targets through the native transport without the compatibility toggle', async () => {
+    mocks.platform.type = 'mobile'
+    const response = new Response('ok')
+    mocks.mobileRequest.mockResolvedValue(response)
+    const rendererFetch = vi.fn()
+    vi.stubGlobal('fetch', rendererFetch)
+
+    await expect(apiRequest.get('http://relay.example:8222/v1/models', {}, { retry: 0 })).resolves.toBe(response)
+
+    expect(mocks.mobileRequest).toHaveBeenCalledWith(
+      'http://relay.example:8222/v1/models',
+      'GET',
+      expect.any(Headers),
+      undefined,
+      undefined
+    )
+    expect(rendererFetch).not.toHaveBeenCalled()
+  })
+
+  it('keeps secure mobile targets in the WebView unless compatibility is enabled', async () => {
+    mocks.platform.type = 'mobile'
+    const response = new Response('ok')
+    const rendererFetch = vi.fn().mockResolvedValue(response)
+    mocks.mobileRequest.mockResolvedValue(response)
+    vi.stubGlobal('fetch', rendererFetch)
+
+    await apiRequest.get('https://api.example.com/v1/models', {}, { retry: 0 })
+
+    expect(rendererFetch).toHaveBeenCalledWith(
+      'https://api.example.com/v1/models',
+      expect.objectContaining({ method: 'GET' })
+    )
+    expect(mocks.mobileRequest).not.toHaveBeenCalled()
+  })
 })

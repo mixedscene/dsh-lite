@@ -1,7 +1,7 @@
 name: Android Chatbox + Antigravity
 on:
   push:
-    branches: [chatbox-antigravity]
+    branches: [chatbox-antigravity, chatbox-antigravity-test]
   workflow_dispatch:
 permissions:
   contents: read

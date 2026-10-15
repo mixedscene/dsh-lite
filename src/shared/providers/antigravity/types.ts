@@ -23,6 +23,10 @@ export interface AntigravityChatOptions {
   maxOutputTokens?: number
   temperature?: number
   topP?: number
+  /** Thinking level of the resolved tier; omitted keeps the legacy LOW default. */
+  thinkingLevel?: 'minimal' | 'low' | 'medium' | 'high'
+  /** Whether the response should include the model's thinking parts. */
+  includeThoughts?: boolean
   onUpdate?: (update: AntigravityUpdate) => void
 }
 export interface AntigravityChatResult extends AntigravityUpdate {
