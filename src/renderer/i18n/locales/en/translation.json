@@ -561,8 +561,6 @@
   "Import Provider Configuration": "Import Provider Configuration",
   "Importing...": "Importing...",
   "Improve Network Compatibility": "Improve Network Compatibility",
-  "Send Codex client headers": "Send Codex client headers",
-  "Enable only for relay gateways that accept official Codex CLI clients. Required by gateways that answer 403 This account only allows Codex official clients.": "Enable only for relay gateways that accept official Codex CLI clients. Required by gateways that answer 403 This account only allows Codex official clients.",
   "Indexed": "Indexed",
   "Indexed · {{count}} chunks": "Indexed · {{count}} chunks",
   "Indexing": "Indexing",
@@ -1454,5 +1452,7 @@
   "Used for automatic and manual compression. Leave empty to use the built-in prompt.": "Used for automatic and manual compression. Leave empty to use the built-in prompt.",
   "Compaction Prompt": "Compaction Prompt",
   "Summarize earlier messages to reduce context usage. Your conversation history will remain available.": "Summarize earlier messages to reduce context usage. Your conversation history will remain available.",
-  "Work Mode does not use conversation system prompts. To use a custom prompt, create a Copilot and set its prompt.": "Work Mode does not use conversation system prompts. To use a custom prompt, create a Copilot and set its prompt."
+  "Work Mode does not use conversation system prompts. To use a custom prompt, create a Copilot and set its prompt.": "Work Mode does not use conversation system prompts. To use a custom prompt, create a Copilot and set its prompt.",
+  "Client request headers": "Client request headers",
+  "One Header: value per line. Leave empty to send the built-in Codex CLI fingerprint (needed by gateways that reject other clients with 403 This account only allows Codex official clients). Enter - to send no extra headers.": "One Header: value per line. Leave empty to send the built-in Codex CLI fingerprint (needed by gateways that reject other clients with 403 This account only allows Codex official clients). Enter - to send no extra headers."
 }

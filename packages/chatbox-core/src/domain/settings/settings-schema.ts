@@ -72,8 +72,12 @@ export const ProviderSettingsSchema = z.object({
   models: z.array(ProviderModelInfoSchema).optional().catch(undefined),
   excludedModels: z.array(z.string()).optional().catch(undefined),
   useProxy: z.boolean().optional().catch(undefined),
-  /** Send the Codex CLI client fingerprint headers (needed by Codex-only relay gateways). */
-  codexClientHeaders: z.boolean().optional().catch(undefined),
+  /**
+   * Extra request headers for custom requests, as `key: value` lines. Blank means
+   * "send the built-in Codex CLI fingerprint"; `-` means "send nothing extra".
+   * Editable at runtime so a gateway change never needs a new build.
+   */
+  clientHeaders: z.string().optional().catch(undefined),
 
   // oauth
   oauth: OAuthCredentialsSchema.optional().catch(undefined),

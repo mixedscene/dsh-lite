@@ -9,6 +9,7 @@ import {
   Stack,
   Switch,
   Text,
+  Textarea,
   TextInput,
   Title,
 } from '@mantine/core'
@@ -16,6 +17,7 @@ import { TestId } from '@shared/automation/testids'
 import { SystemProviders } from '@shared/defaults'
 import { type OAuthProviderInfo, toOAuthProviderId, toOAuthSettingsProviderId } from '@shared/oauth'
 import { getProviderDefinition } from '@shared/providers'
+import { DEFAULT_CLIENT_HEADERS_TEXT } from '@shared/providers/codex-client-headers'
 import {
   ModelProviderEnum,
   ModelProviderType,
@@ -816,18 +818,26 @@ function ProviderSettings({ providerId }: { providerId: string }) {
 
             {(baseInfo.type === ModelProviderType.OpenAI ||
               baseInfo.type === ModelProviderType.OpenAIResponses) && (
-              <Switch
-                label={t('Send Codex client headers')}
-                description={t(
-                  'Enable only for relay gateways that accept official Codex CLI clients. Required by gateways that answer 403 This account only allows Codex official clients.'
-                )}
-                checked={providerSettings?.codexClientHeaders || false}
-                onChange={(e) =>
-                  setProviderSettings({
-                    codexClientHeaders: e.currentTarget.checked,
-                  })
-                }
-              />
+              <Stack gap="xxs">
+                <Text fw="500">{t('Client request headers')}</Text>
+                <Textarea
+                  value={providerSettings?.clientHeaders ?? ''}
+                  placeholder={DEFAULT_CLIENT_HEADERS_TEXT}
+                  autosize
+                  minRows={3}
+                  maxRows={12}
+                  onChange={(e) =>
+                    setProviderSettings({
+                      clientHeaders: e.currentTarget.value,
+                    })
+                  }
+                />
+                <Text span size="xs" c="chatbox-tertiary">
+                  {t(
+                    'One Header: value per line. Leave empty to send the built-in Codex CLI fingerprint (needed by gateways that reject other clients with 403 This account only allows Codex official clients). Enter - to send no extra headers.'
+                  )}
+                </Text>
+              </Stack>
             )}
           </>
         )}

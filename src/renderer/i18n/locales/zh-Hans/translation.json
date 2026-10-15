@@ -561,8 +561,6 @@
   "Import Provider Configuration": "导入提供方配置",
   "Importing...": "正在导入...",
   "Improve Network Compatibility": "改善网络兼容性",
-  "Send Codex client headers": "发送 Codex 客户端标识头",
-  "Enable only for relay gateways that accept official Codex CLI clients. Required by gateways that answer 403 This account only allows Codex official clients.": "仅当你的中转站只接受 Codex 官方客户端（报 403 This account only allows Codex official clients）时开启。",
   "Indexed": "已索引",
   "Indexed · {{count}} chunks": "已索引 · {{count}} 个分块",
   "Indexing": "正在索引",
@@ -1454,5 +1452,7 @@
   "Used for automatic and manual compression. Leave empty to use the built-in prompt.": "用于自动和手动压缩。留空则使用内置提示词。",
   "Compaction Prompt": "压缩提示词",
   "Summarize earlier messages to reduce context usage. Your conversation history will remain available.": "将较早的消息汇总为摘要，减少上下文占用。原始对话记录仍可查看。",
-  "Work Mode does not use conversation system prompts. To use a custom prompt, create a Copilot and set its prompt.": "工作模式不使用对话的系统提示词。如需使用自定义提示词，请创建 Copilot 并设置其提示词。"
+  "Work Mode does not use conversation system prompts. To use a custom prompt, create a Copilot and set its prompt.": "工作模式不使用对话的系统提示词。如需使用自定义提示词，请创建 Copilot 并设置其提示词。",
+  "Client request headers": "客户端请求头",
+  "One Header: value per line. Leave empty to send the built-in Codex CLI fingerprint (needed by gateways that reject other clients with 403 This account only allows Codex official clients). Enter - to send no extra headers.": "每行一条 Header: value。留空即发送内置的 Codex CLI 指纹（只接受官方 Codex 客户端的中转站必须带，否则报 403 This account only allows Codex official clients）；填 - 表示完全不附加额外请求头。"
 }

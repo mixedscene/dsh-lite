@@ -2,7 +2,7 @@ import CustomClaude from '@shared/providers/definitions/models/custom-claude'
 import CustomGemini from '@shared/providers/definitions/models/custom-gemini'
 import CustomOpenAI from '@shared/providers/definitions/models/custom-openai'
 import CustomOpenAIResponses from '@shared/providers/definitions/models/custom-openai-responses'
-import { CODEX_CLIENT_HEADERS } from '@shared/providers/codex-client-headers'
+import { resolveClientHeaders } from '@shared/providers/codex-client-headers'
 import {
   type ModelProvider,
   ModelProviderType,
@@ -107,7 +107,7 @@ export default class CustomProviderSettingUtil extends BaseConfig implements Mod
             model,
             temperature: 0,
             useProxy: settings.useProxy,
-            extraHeaders: settings.codexClientHeaders ? CODEX_CLIENT_HEADERS : undefined,
+            extraHeaders: resolveClientHeaders(settings.clientHeaders),
           },
           dependencies
         )
@@ -123,7 +123,7 @@ export default class CustomProviderSettingUtil extends BaseConfig implements Mod
             model,
             temperature: 0,
             useProxy: settings.useProxy,
-            extraHeaders: settings.codexClientHeaders ? CODEX_CLIENT_HEADERS : undefined,
+            extraHeaders: resolveClientHeaders(settings.clientHeaders),
           },
           dependencies
         )
