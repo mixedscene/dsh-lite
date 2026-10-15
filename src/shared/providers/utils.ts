@@ -5,6 +5,7 @@ import CustomClaude from './definitions/models/custom-claude'
 import CustomGemini from './definitions/models/custom-gemini'
 import CustomOpenAI from './definitions/models/custom-openai'
 import CustomOpenAIResponses from './definitions/models/custom-openai-responses'
+import { CODEX_CLIENT_HEADERS } from './codex-client-headers'
 import type { CreateModelConfig } from './types'
 
 export function createCustomProviderModel(
@@ -55,6 +56,7 @@ export function createCustomProviderModel(
           maxOutputTokens: settings.maxTokens,
           stream: settings.stream,
           useProxy: providerSetting.useProxy,
+          extraHeaders: providerSetting.codexClientHeaders ? CODEX_CLIENT_HEADERS : undefined,
         },
         dependencies
       )
@@ -71,6 +73,7 @@ export function createCustomProviderModel(
           maxOutputTokens: settings.maxTokens,
           stream: settings.stream,
           useProxy: providerSetting.useProxy,
+          extraHeaders: providerSetting.codexClientHeaders ? CODEX_CLIENT_HEADERS : undefined,
         },
         dependencies
       )

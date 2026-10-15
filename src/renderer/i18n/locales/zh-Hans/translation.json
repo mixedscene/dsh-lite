@@ -561,6 +561,8 @@
   "Import Provider Configuration": "导入提供方配置",
   "Importing...": "正在导入...",
   "Improve Network Compatibility": "改善网络兼容性",
+  "Send Codex client headers": "发送 Codex 客户端标识头",
+  "Enable only for relay gateways that accept official Codex CLI clients. Required by gateways that answer 403 This account only allows Codex official clients.": "仅当你的中转站只接受 Codex 官方客户端（报 403 This account only allows Codex official clients）时开启。",
   "Indexed": "已索引",
   "Indexed · {{count}} chunks": "已索引 · {{count}} 个分块",
   "Indexing": "正在索引",

@@ -813,6 +813,22 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                 })
               }
             />
+
+            {(baseInfo.type === ModelProviderType.OpenAI ||
+              baseInfo.type === ModelProviderType.OpenAIResponses) && (
+              <Switch
+                label={t('Send Codex client headers')}
+                description={t(
+                  'Enable only for relay gateways that accept official Codex CLI clients. Required by gateways that answer 403 This account only allows Codex official clients.'
+                )}
+                checked={providerSettings?.codexClientHeaders || false}
+                onChange={(e) =>
+                  setProviderSettings({
+                    codexClientHeaders: e.currentTarget.checked,
+                  })
+                }
+              />
+            )}
           </>
         )}
 

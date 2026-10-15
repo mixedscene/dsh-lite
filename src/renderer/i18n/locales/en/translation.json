@@ -561,6 +561,8 @@
   "Import Provider Configuration": "Import Provider Configuration",
   "Importing...": "Importing...",
   "Improve Network Compatibility": "Improve Network Compatibility",
+  "Send Codex client headers": "Send Codex client headers",
+  "Enable only for relay gateways that accept official Codex CLI clients. Required by gateways that answer 403 This account only allows Codex official clients.": "Enable only for relay gateways that accept official Codex CLI clients. Required by gateways that answer 403 This account only allows Codex official clients.",
   "Indexed": "Indexed",
   "Indexed · {{count}} chunks": "Indexed · {{count}} chunks",
   "Indexing": "Indexing",
