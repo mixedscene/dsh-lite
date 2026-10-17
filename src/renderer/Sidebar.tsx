@@ -30,6 +30,7 @@ import { navigateToSettings } from './modals/settings-navigation'
 import { trackingEvent } from './packages/event'
 import { getSidebarModalSx } from './sidebar-drawer'
 import icon from './static/antigravity.svg'
+import { useLanguage } from './stores/settingsStore'
 import { useUIStore } from './stores/uiStore'
 import { CHATBOX_BUILD_PLATFORM, CHATBOX_BUILD_TARGET } from './variables'
 
@@ -51,6 +52,7 @@ function setIosTextInteractionEnabled(enabled: boolean) {
 
 export default function Sidebar() {
   const { t } = useTranslation()
+  const language = useLanguage()
   const versionHook = useVersion()
   const navigate = useNavigate()
   const showSidebar = useUIStore((s) => s.showSidebar)
