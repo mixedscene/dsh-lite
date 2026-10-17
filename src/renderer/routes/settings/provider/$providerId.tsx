@@ -33,9 +33,7 @@ import {
 } from '@shared/utils'
 import {
   IconCircleCheck,
-  IconDiscount2,
   IconExternalLink,
-  IconHelpCircle,
   IconLogin,
   IconLogout,
   IconPlus,
@@ -63,7 +61,7 @@ import { useOAuthProviders } from '@/hooks/useOAuthProviders'
 import { enrichModelsFromRegistry, forceRefreshRegistry, useModelRegistryVersion } from '@/packages/model-registry'
 import { getModelSettingUtil } from '@/packages/model-setting-utils'
 import platform from '@/platform'
-import { settingsStore, useLanguage, useProviderSettings, useSettingsStore } from '@/stores/settingsStore'
+import { settingsStore, useProviderSettings, useSettingsStore } from '@/stores/settingsStore'
 import { add as addToast } from '@/stores/toastActions'
 import { type ModelTestState, testModelCapabilities } from '@/utils/model-tester'
 
@@ -171,7 +169,6 @@ function ProviderSettings({ providerId }: { providerId: string }) {
   const setSettings = useSettingsStore((state) => state.setSettings)
   const customProviders = useSettingsStore((state) => state.customProviders)
 
-  const language = useLanguage()
 
   const baseInfo = [...SystemProviders(), ...(customProviders || [])].find((p) => p.id === providerId)
 
@@ -521,16 +518,6 @@ function ProviderSettings({ providerId }: { providerId: string }) {
           </PopoverConfirm>
         )}
       </Flex>
-      {baseInfo.isCustom && language === 'zh-Hans' && (
-        <Flex>
-          <ScalableIcon icon={IconHelpCircle} />
-          <Text span size="xs" c="chatbox-tertiary">
-            <a href="https://docs.chatboxai.app/guides/providers" target="_blank" rel="noopener">
-              {t('Setup guide')}
-            </a>
-          </Text>
-        </Flex>
-      )}
 
       <Stack gap="xl">
         {/* custom provider base info */}
@@ -795,14 +782,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                 {normalizeAPIHost(providerSettings, baseInfo.type).apiHost +
                   normalizeAPIHost(providerSettings, baseInfo.type).apiPath}
               </Text>
-              {providerSettings?.apiHost?.includes('aihubmix.com') && (
-                <Flex align="center" gap={4}>
-                  <ScalableIcon icon={IconDiscount2} size={14} color="var(--chatbox-tint-tertiary)" />
-                  <Text span size="xs" c="chatbox-tertiary">
-                    {t('AIHubMix integration in Chatbox offers 10% discount')}
-                  </Text>
-                </Flex>
-              )}
+
             </Stack>
 
             <Switch

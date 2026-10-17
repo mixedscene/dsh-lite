@@ -76,7 +76,7 @@ describe('WebExporter.exportStreamingFile', () => {
 
     expect(showSaveFilePicker).toHaveBeenCalledWith({
       suggestedName: 'backup.zip',
-      types: [{ description: 'Chatbox backup', accept: { 'application/zip': ['.zip'] } }],
+      types: [{ description: 'Antigravity backup', accept: { 'application/zip': ['.zip'] } }],
     })
     expect(write).toHaveBeenCalledTimes(2)
     expect(close).toHaveBeenCalledOnce()

@@ -44,8 +44,8 @@ export default class OpenRouter extends AbstractAISDKModel {
     return createOpenRouter({
       apiKey: this.options.apiKey,
       headers: {
-        'HTTP-Referer': 'https://chatboxai.app',
-        'X-Title': 'Chatbox AI',
+        'HTTP-Referer': 'https://github.com/mixedscene/dsh-lite',
+        'X-Title': 'Antigravity',
       },
       fetch: createOpenAIChatCompletionSseFetch(this.options.customFetch),
     })

@@ -3,14 +3,9 @@ import { ChatboxAIAPIError } from '@shared/models/errors'
 import type { ImageGeneration } from '@shared/types'
 import { IconCheck, IconCopy, IconRefresh, IconSettings, IconX } from '@tabler/icons-react'
 import { Trans, useTranslation } from 'react-i18next'
-import LinkTargetBlank from '@/components/common/Link'
 import { AppTooltip as Tooltip } from '@/components/ui/tooltip'
 import { useCopied } from '@/hooks/useCopied'
 import { navigateToSettings } from '@/modals/settings-navigation'
-import { trackingEvent } from '@/packages/event'
-import { buildChatboxUrl } from '@/packages/remote'
-import platform from '@/platform'
-import * as settingActions from '@/stores/settingActions'
 
 export interface ImageGenerationErrorTipsProps {
   record: ImageGeneration
@@ -55,7 +50,12 @@ export function ImageGenerationErrorTips({ record, onRetry, isRetrying }: ImageG
   )
   const { copied, copy } = useCopied(errorDebugInfo.join('\n'))
   const isLicenseError =
-    chatboxAIErrorDetail && ['license_not_found', 'expired_license'].includes(chatboxAIErrorDetail.name)
+    chatboxAIErrorDetail && /license|token_quota/.test(chatboxAIErrorDetail.name)
+  const errorI18nKey = chatboxAIErrorDetail
+    ? isLicenseError || /Chatbox|hi@chatboxai|<OpenMorePlanButton>|<LinkTo/.test(chatboxAIErrorDetail.i18nKey)
+      ? 'This service is unavailable. Please select a configured provider in <OpenSettingButton>settings</OpenSettingButton>.'
+      : chatboxAIErrorDetail.i18nKey
+    : undefined
 
   return (
     <Paper
@@ -75,7 +75,7 @@ export function ImageGenerationErrorTips({ record, onRetry, isRetrying }: ImageG
         {chatboxAIErrorDetail ? (
           <Text size="sm" c="dimmed" ta="center" maw={400}>
             <Trans
-              i18nKey={chatboxAIErrorDetail.i18nKey}
+              i18nKey={errorI18nKey}
               values={{
                 model: record.model.modelId,
               }}
@@ -85,27 +85,9 @@ export function ImageGenerationErrorTips({ record, onRetry, isRetrying }: ImageG
                     component="span"
                     className="cursor-pointer underline"
                     c="chatbox-brand"
-                    onClick={() => navigateToSettings()}
+                    onClick={() => navigateToSettings('/provider')}
                   />
                 ),
-                OpenMorePlanButton: (
-                  <Text
-                    component="span"
-                    className="cursor-pointer underline"
-                    c="chatbox-brand"
-                    onClick={() => {
-                      platform.openLink(
-                        buildChatboxUrl(
-                          `/redirect_app/view_more_plans/${settingActions.getLanguage()}?utm_source=app&utm_content=image_creator_upgrade_required`
-                        )
-                      )
-                      trackingEvent('click_view_more_plans_button_from_image_creator', {
-                        event_category: 'user',
-                      })
-                    }}
-                  />
-                ),
-                LinkToHomePage: <LinkTargetBlank href="https://chatboxai.app" />,
               }}
             />
           </Text>
@@ -147,7 +129,7 @@ export function ImageGenerationErrorTips({ record, onRetry, isRetrying }: ImageG
               variant="light"
               color="gray"
               leftSection={<IconSettings size={16} />}
-              onClick={() => navigateToSettings()}
+              onClick={() => navigateToSettings('/provider')}
               radius="lg"
             >
               {t('Settings')}

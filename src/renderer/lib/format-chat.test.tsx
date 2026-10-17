@@ -53,6 +53,32 @@ test('exports previewable HTML code blocks without interactive controls', async 
   expect(html).not.toContain('<button')
 })
 
+test.each(['static', 'interactive'] as const)(
+  '%s HTML export omits official branding while retaining document formatting',
+  async (mode) => {
+    const threads = [{ name: 'Thread <one>', messages: [message('export-message', 'user', 'Conversation content')] }]
+    const html =
+      mode === 'static'
+        ? await formatChatAsHtml('Session <title>', threads)
+        : await formatChatAsInteractiveHtml('Session <title>', threads, {})
+    const dom = new JSDOM(html, { runScripts: 'dangerously' })
+    const { document } = dom.window
+
+    expect(document.title).toBe('Session <title>')
+    expect(document.querySelector('h1')?.textContent?.trim()).toBe('Session <title>')
+    expect(document.querySelector('h2')?.textContent).toBe('1. Thread <one>')
+    expect(document.body.textContent).toContain('Conversation content')
+    expect(document.querySelector('.chatbox-export-message')).not.toBeNull()
+    expect(document.querySelector('body')?.className).toBe('bg-slate-100')
+    expect(document.querySelector('script[src="https://cdn.tailwindcss.com"]')).not.toBeNull()
+    expect(document.querySelector('link[href*="katex@0.16.8"]')).not.toBeNull()
+    expect(document.querySelector('link[rel*="icon"]')).toBeNull()
+    expect(document.querySelector('[href*="chatboxai.app"], [src*="chatboxai.app"]')).toBeNull()
+    expect(document.body.textContent).not.toContain('Chatbox AI')
+    dom.window.close()
+  }
+)
+
 test('interactive HTML renders only the active path and restores nested branch selections', async () => {
   const outerPivot = message('outer-pivot', 'user', 'outer question')
   const outerSummary = message('outer-summary', 'assistant', 'outer summary')

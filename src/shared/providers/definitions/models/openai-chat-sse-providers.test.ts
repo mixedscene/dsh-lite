@@ -146,7 +146,7 @@ describe('first-class OpenAI Chat SSE providers', () => {
     const [input, init] = customFetch.mock.calls[0]
     expect(String(input)).toBe('https://openrouter.ai/api/v1/chat/completions')
     expect(new Headers(init?.headers).get('authorization')).toBe('Bearer test-key')
-    expect(new Headers(init?.headers).get('http-referer')).toBe('https://chatboxai.app')
+    expect(new Headers(init?.headers).get('http-referer')).toBe('https://github.com/mixedscene/dsh-lite')
     expect(JSON.parse(String(init?.body))).toMatchObject({ stream: true })
     expect(init?.signal).toBe(abortController.signal)
   })

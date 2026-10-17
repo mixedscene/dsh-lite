@@ -229,19 +229,19 @@ describe('MobileExporter', () => {
 
     expect(filesystemMock.writeFile).toHaveBeenCalledWith(
       expect.objectContaining({
-        path: 'chatbox_ai_exports/backup.zip',
+        path: 'antigravity_exports/backup.zip',
         directory: 'DOCUMENTS',
         recursive: true,
       })
     )
     expect(filesystemMock.writeFile.mock.calls[0][0].data).toHaveLength(1_398_104)
     expect(filesystemMock.appendFile).toHaveBeenCalledWith({
-      path: 'chatbox_ai_exports/backup.zip',
+      path: 'antigravity_exports/backup.zip',
       data: 'AQID',
       directory: 'DOCUMENTS',
     })
     expect(filesystemMock.getUri).toHaveBeenCalledWith({
-      path: 'chatbox_ai_exports/backup.zip',
+      path: 'antigravity_exports/backup.zip',
       directory: 'DOCUMENTS',
     })
   })
@@ -296,7 +296,7 @@ describe('MobileExporter', () => {
     ).rejects.toMatchObject({ name: 'AbortError' })
 
     expect(filesystemMock.deleteFile).toHaveBeenCalledWith({
-      path: 'chatbox_ai_exports/backup.zip',
+      path: 'antigravity_exports/backup.zip',
       directory: 'DOCUMENTS',
     })
     expect(toastMock.show).not.toHaveBeenCalled()

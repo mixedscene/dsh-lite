@@ -123,30 +123,39 @@ describe('FileParseError', () => {
     mockPlatform.isDesktopLike = true
   })
 
-  test('lets desktop users switch parsers when Chatbox AI parsing has no account license', async () => {
-    showFileParseError('chatbox_ai_parser_license_key_required', 'lecture.pdf')
-
-    expect(await screen.findByText('File: lecture.pdf')).toBeTruthy()
-    const openSettings = screen.getByText('Sign in to Chatbox AI')
-    const documentParser = screen.getByText('document parser')
-    expect(openSettings.tagName).toBe('BUTTON')
-    expect(documentParser.tagName).toBe('BUTTON')
-
-    fireEvent.click(openSettings)
-
-    expect(mockNavigateToSettings).toHaveBeenCalledWith('/chatbox-ai')
-  })
-
-  test.each(['web', 'mobile'])(
-    'only prompts %s users to sign in because no alternative parser is available',
+  test.each(['desktop', 'web', 'mobile'])(
+    'guides %s users with legacy service errors to configured providers',
     async (type) => {
       mockPlatform.type = type
-      mockPlatform.isDesktopLike = false
+      mockPlatform.isDesktopLike = type === 'desktop'
       showFileParseError('chatbox_ai_parser_license_key_required', 'lecture.pdf')
 
       expect(await screen.findByText('File: lecture.pdf')).toBeTruthy()
-      expect(screen.getByText('Sign in to Chatbox AI').tagName).toBe('BUTTON')
-      expect(screen.queryByText('document parser')).toBeNull()
+      const openSettings = screen.getByRole('button', { name: 'settings' })
+      expect(screen.queryByText('Sign in to Chatbox AI')).toBeNull()
+      expect(document.querySelector('a[href*="chatboxai"]')).toBeNull()
+
+      fireEvent.click(openSettings)
+
+      expect(mockNavigateToSettings).toHaveBeenCalledWith('/provider')
     }
   )
+
+  test('preserves the local password-protected PDF error', async () => {
+    showFileParseError('pdf_password_protected', 'protected.pdf')
+
+    expect(await screen.findByText('File: protected.pdf')).toBeTruthy()
+    expect(
+      screen.getByText('This PDF is password-protected, so its content cannot be read. Remove the password and upload it again.')
+    ).toBeTruthy()
+  })
+
+  test('keeps document parser settings available for parser failures', async () => {
+    showFileParseError('third_party_parser_failed', 'lecture.pdf')
+
+    expect(await screen.findByText('File: lecture.pdf')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'document parser settings' }))
+
+    expect(mockNavigateToSettings).toHaveBeenCalledWith('/document-parser')
+  })
 })

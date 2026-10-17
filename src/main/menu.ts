@@ -1,4 +1,4 @@
-import { app, type BrowserWindow, Menu, type MenuItemConstructorOptions, shell } from 'electron'
+import { app, type BrowserWindow, Menu, type MenuItemConstructorOptions } from 'electron'
 import Locale from './locales'
 
 interface DarwinMenuItemConstructorOptions extends MenuItemConstructorOptions {
@@ -78,17 +78,12 @@ export default class MenuBuilder {
 
   buildDarwinTemplate(): MenuItemConstructorOptions[] {
     const subMenuAbout: DarwinMenuItemConstructorOptions = {
-      label: 'Chatbox',
+      label: 'Antigravity',
       submenu: [
-        {
-          label: 'About Chatbox',
-          selector: 'orderFrontStandardAboutPanel:',
-        },
-        { type: 'separator' },
         { label: 'Services', submenu: [] },
         { type: 'separator' },
         {
-          label: 'Hide Chatbox',
+          label: 'Hide Antigravity',
           accelerator: 'Command+H',
           selector: 'hide:',
         },
@@ -214,40 +209,11 @@ export default class MenuBuilder {
         { label: 'Bring All to Front', selector: 'arrangeInFront:' },
       ],
     }
-    const subMenuHelp: MenuItemConstructorOptions = {
-      label: 'Help',
-      submenu: [
-        {
-          label: 'Learn More',
-          click() {
-            shell.openExternal('https://chatboxai.app')
-          },
-        },
-        {
-          label: 'Github Repo',
-          click() {
-            shell.openExternal('https://github.com/chatboxai/chatbox')
-          },
-        },
-        // {
-        //   label: 'Community Discussions',
-        //   click() {
-        //     shell.openExternal('https://www.electronjs.org/community');
-        //   },
-        // },
-        {
-          label: 'Search Issues',
-          click() {
-            shell.openExternal('https://github.com/chatboxai/chatbox/issues?q=is%3Aissue')
-          },
-        },
-      ],
-    }
 
     const subMenuView =
       process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true' ? subMenuViewDev : subMenuViewProd
 
-    return [subMenuAbout, subMenuEdit, subMenuView, subMenuWindow, subMenuHelp]
+    return [subMenuAbout, subMenuEdit, subMenuView, subMenuWindow]
   }
 
   buildDefaultTemplate() {
@@ -304,35 +270,6 @@ export default class MenuBuilder {
                   },
                 },
               ],
-      },
-      {
-        label: 'Help',
-        submenu: [
-          {
-            label: 'Learn More',
-            click() {
-              shell.openExternal('https://chatboxai.app')
-            },
-          },
-          {
-            label: 'Github Repo',
-            click() {
-              shell.openExternal('https://github.com/chatboxai/chatbox')
-            },
-          },
-          // {
-          //   label: 'Community Discussions',
-          //   click() {
-          //     shell.openExternal('https://www.electronjs.org/community');
-          //   },
-          // },
-          {
-            label: 'Search Issues',
-            click() {
-              shell.openExternal('https://github.com/chatboxai/chatbox/issues?q=is%3Aissue')
-            },
-          },
-        ],
       },
     ]
 

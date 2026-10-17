@@ -1,4 +1,4 @@
-name: Android Chatbox + Antigravity
+name: Android Antigravity
 on:
   push:
     branches: [chatbox-antigravity, chatbox-antigravity-test]
@@ -39,6 +39,7 @@ jobs:
       - name: Validate providers and original generation behavior
         run: |
           pnpm exec vitest run src/shared/providers/antigravity src/shared/providers/definitions/models/antigravity.test.ts src/renderer/native src/renderer/utils/mobile-request.test.ts src/renderer/utils/request.test.ts src/renderer/stores/serviceIndependentSettings.test.ts src/renderer/lite src/renderer/adapters/CurrentGenerationService.test.ts src/renderer/stores/session/agent-harness.test.ts src/renderer/packages/model-calls/index.test.ts packages/chatbox-core/src/generation packages/chatbox-core/src/application/session/SessionNamingService.test.ts
+          pnpm exec vitest run src/renderer/modals/FileParseError.test.tsx src/renderer/components/Artifact-preview.test.tsx src/shared/providers/codex-client-headers-spec.test.ts src/shared/providers/definitions/models/openai-chat-sse-providers.test.ts src/shared/utils/backup.test.ts src/renderer/packages/remote.test.ts src/renderer/lib/format-chat.test.tsx src/renderer/setup/ga_init.test.ts src/renderer/setup/telemetry_init.test.ts src/renderer/utils/sentry.test.ts src/renderer/utils/track.test.ts src/renderer/platform/web_exporter.test.ts src/renderer/platform/filter_writer.test.ts src/renderer/packages/mcp/controller.test.ts
           pnpm run check
       - name: Build original Chatbox renderer and sync Capacitor
         run: |

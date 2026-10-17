@@ -38,15 +38,11 @@ export class MCPOAuthProvider implements OAuthClientProvider {
     return REDIRECT_URL
   }
 
-  // Client ID Metadata Document (SEP-991): the SDK uses this URL as client_id when the
-  // authorization server advertises client_id_metadata_document_supported, and falls back
-  // to dynamic client registration otherwise. The hosted document must mirror clientMetadata.
-  readonly clientMetadataUrl = 'https://chatboxai.app/.well-known/oauth-client'
-
+  // Register directly with each third party server; no hosted client identity is required.
   get clientMetadata(): OAuthClientMetadata {
     return {
-      client_name: 'Chatbox',
-      client_uri: 'https://chatboxai.app',
+      client_name: 'Antigravity',
+      client_uri: 'https://github.com/mixedscene/dsh-lite',
       redirect_uris: [REDIRECT_URL],
       grant_types: ['authorization_code', 'refresh_token'],
       response_types: ['code'],

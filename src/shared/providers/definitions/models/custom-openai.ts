@@ -66,13 +66,8 @@ export default class CustomOpenAI extends AbstractAISDKModel {
     }
     if (this.options.apiHost.includes('openrouter.ai')) {
       return {
-        'HTTP-Referer': 'https://chatboxai.app',
-        'X-Title': 'Chatbox AI',
-      }
-    }
-    if (this.options.apiHost.includes('aihubmix.com')) {
-      return {
-        'APP-Code': 'VAFU9221',
+        'HTTP-Referer': 'https://github.com/mixedscene/dsh-lite',
+        'X-Title': 'Antigravity',
       }
     }
     return undefined

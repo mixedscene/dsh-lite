@@ -432,7 +432,7 @@ export class IOSFilterWriter extends FilterWriter {
 export class AndroidFilterWriter extends FilterWriter {
   protected getWriteConfig(filename: string): FileWriteConfig {
     return {
-      path: `chatbox_ai_exports/${filename}`,
+      path: `antigravity_exports/${filename}`,
       directory: Directory.Documents,
       recursive: true,
     }

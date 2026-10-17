@@ -108,7 +108,6 @@ function renderHtmlDocument(sessionName: string, content: string, interactiveScr
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
-    <link rel="shortcut icon" href="https://chatboxai.app/icon.png">
     <style>
       .chatbox-fork-navigation { display: flex; justify-content: flex-end; align-items: center; gap: 0.5rem; margin: -0.5rem 1rem 0.75rem; color: #868e96; }
       .chatbox-fork-navigation button { appearance: none; border: 0; border-radius: 9999px; background: transparent; color: inherit; cursor: pointer; font-size: 1.25rem; line-height: 1; padding: 0.25rem 0.5rem; }
@@ -120,18 +119,10 @@ function renderHtmlDocument(sessionName: string, content: string, interactiveScr
     <div class='mx-auto max-w-5xl shadow-md prose bg-white px-2 py-4'>
         <h1 class='flex flex-row justify-between items-center my-4 h-8'>
             <span>${escapedSessionName}</span>
-            <a href="https://chatboxai.app" target="_blank" >
-                <img src='https://chatboxai.app/icon.png' class="w-12">
-            </a>
         </h1>
         <hr />
         ${content}
         <hr />
-        <a href="https://chatboxai.app" style="display: flex; align-items: center;" class="text-sky-500" target="_blank">
-            <img src='https://chatboxai.app/icon.png' class="w-12 pr-2">
-            <b style='font-size:30px'>Chatbox AI</b>
-        </a>
-        <p><a href="https://chatboxai.app" target="_blank">https://chatboxai.app</a></p>
     </div>
     ${interactiveScript}
 </body>
